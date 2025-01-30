@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom datepicker styling */
+.react-datepicker {
+  @apply border border-gray-200 rounded-lg shadow-lg;
+}
+
+.react-datepicker__header {
+  @apply bg-gray-50 border-b border-gray-200;
+}
+
+.react-datepicker__current-month {
+  @apply text-gray-800 font-semibold;
+}
+
+.react-datepicker__day--selected {
+  @apply bg-primary text-white hover:bg-primary/90;
+}
