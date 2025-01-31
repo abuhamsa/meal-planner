@@ -2,4 +2,4 @@ Flask==3.0.2
 Flask-SQLAlchemy==3.1.1
 Flask-Cors==4.0.0
 python-dotenv==1.0.0
-flask_migrate
+Flask-Migrate==4.0.5
