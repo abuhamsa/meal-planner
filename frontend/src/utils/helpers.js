@@ -21,3 +21,13 @@ export const weekConfig = {
   weekStartsOn: 1,
   weekLabel: "KW"
 };
+
+export const isValidUrl = (url) => {
+  if (!url) return true; // Allow empty URLs
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};

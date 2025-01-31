@@ -12,6 +12,8 @@ import {
   weekConfig
 } from './utils/helpers';
 import Spinner from './components/Spinner';  // Keep this as is, it's correct with default export
+import { isValidUrl } from './utils/helpers';
+
 
 Modal.setAppElement('#root');
 
@@ -38,15 +40,47 @@ const MealEditor = ({ date, mealType, onClose, onSave, initialValues }) => {
   const [person2, setPerson2] = useState(initialValues?.person2 || '');
   const [person1Url, setPerson1Url] = useState(initialValues?.person1_url || '');
   const [person2Url, setPerson2Url] = useState(initialValues?.person2_url || '');
+  const [person1UrlError, setPerson1UrlError] = useState('');
+  const [person2UrlError, setPerson2UrlError] = useState('');
+  const [copyToPerson2, setCopyToPerson2] = useState(false);
+
+  const validateUrls = () => {
+    let isValid = true;
+
+    if (person1Url && !isValidUrl(person1Url)) {
+      setPerson1UrlError('Invalid URL format');
+      isValid = false;
+    } else {
+      setPerson1UrlError('');
+    }
+
+    if (!copyToPerson2 && person2Url && !isValidUrl(person2Url)) {
+      setPerson2UrlError('Invalid URL format');
+      isValid = false;
+    } else {
+      setPerson2UrlError('');
+    }
+
+    return isValid;
+  };
+
+  // Automatically copy person1 to person2 when checkbox is checked
+  useEffect(() => {
+    if (copyToPerson2) {
+      setPerson2(person1);
+      setPerson2Url(person1Url);
+    }
+  }, [person1, person1Url, copyToPerson2]);
 
   const handleSave = () => {
+    if (!validateUrls()) return;
     onSave({
       date: format(date, 'yyyy-MM-dd', { locale: de }),
       meal_type: mealType,
       person1,
-      person2,
+      person2: copyToPerson2 ? person1 : person2,
       person1_url: person1Url,
-      person2_url: person2Url
+      person2_url: copyToPerson2 ? person1Url : person2Url
     });
     onClose();
   };
@@ -75,33 +109,87 @@ const MealEditor = ({ date, mealType, onClose, onSave, initialValues }) => {
             className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
             placeholder="Enter meal"
           />
-          <input
-            type="url"
-            value={person1Url}
-            onChange={(e) => setPerson1Url(e.target.value)}
-            placeholder="URL (optional)"
-            className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
-          />
+          <div className="mt-2">
+            <input
+              type="url"
+              value={person1Url}
+              onChange={(e) => {
+                setPerson1Url(e.target.value);
+                if (e.target.value && !isValidUrl(e.target.value)) {
+                  setPerson1UrlError('Invalid URL format');
+                } else {
+                  setPerson1UrlError('');
+                }
+              }}
+              onBlur={() => {
+                if (person1Url && !isValidUrl(person1Url)) {
+                  setPerson1UrlError('Invalid URL format');
+                }
+              }}
+              placeholder="URL (optional)"
+              className={`w-full px-3 py-2 border rounded-md focus:ring-2 outline-none ${person1UrlError ? 'border-red-500 focus:ring-red-300' : 'border-downy-200 focus:ring-downy-300'
+                }`}
+            />
+            {person1UrlError && (
+              <p className="text-red-500 text-sm mt-1">{person1UrlError}</p>
+            )}
+          </div>
         </div>
+        <label className="flex items-center space-x-2 mb-4">
+          <input
+            type="checkbox"
+            checked={copyToPerson2}
+            onChange={(e) => setCopyToPerson2(e.target.checked)}
+            className="h-4 w-4 text-downy-500 focus:ring-downy-300 rounded border-gray-300"
+          />
+          <span className="text-sm text-downy-700">Same meal for Person 2</span>
+        </label>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-downy-700 mb-1">
             Person 2
           </label>
           <input
-            value={person2}
-            onChange={(e) => setPerson2(e.target.value)}
-            className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
-            placeholder="Enter meal"
+            value={copyToPerson2 ? person1 : person2}
+            onChange={(e) => {
+              setPerson2(e.target.value);
+              setCopyToPerson2(false); // Uncheck if manual edit
+            }}
+            disabled={copyToPerson2}
+            className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none ${copyToPerson2 ? 'bg-gray-50 cursor-not-allowed' : ''
+              }`}
+            placeholder="Meal name"
           />
-          <input
-            type="url"
-            value={person2Url}
-            onChange={(e) => setPerson2Url(e.target.value)}
-            placeholder="URL (optional)"
-            className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
-          />
+          <div className="mt-2">
+            <input
+              type="url"
+              value={copyToPerson2 ? person1Url : person2Url}
+              onChange={(e) => {
+                if (!copyToPerson2) {
+                  setPerson2Url(e.target.value);
+                  if (e.target.value && !isValidUrl(e.target.value)) {
+                    setPerson2UrlError('Invalid URL format');
+                  } else {
+                    setPerson2UrlError('');
+                  }
+                }
+              }}
+              onBlur={() => {
+                if (!copyToPerson2 && person2Url && !isValidUrl(person2Url)) {
+                  setPerson2UrlError('Invalid URL format');
+                }
+              }}
+              disabled={copyToPerson2}
+              className={`w-full px-3 py-2 border rounded-md focus:ring-2 outline-none ${person2UrlError ? 'border-red-500 focus:ring-red-300' : 'border-downy-200 focus:ring-downy-300'
+                } ${copyToPerson2 ? 'bg-gray-50 cursor-not-allowed' : ''
+                }`}
+            />
+            {person2UrlError && (
+              <p className="text-red-500 text-sm mt-1">{person2UrlError}</p>
+            )}
+          </div>
         </div>
       </div>
+
 
       <div className="flex gap-3 justify-end">
         <button
@@ -112,7 +200,8 @@ const MealEditor = ({ date, mealType, onClose, onSave, initialValues }) => {
         </button>
         <button
           onClick={handleSave}
-          className="px-4 py-2 bg-downy-500 text-white rounded-md hover:bg-downy-600"
+          className="px-4 py-2 bg-downy-500 text-white rounded-md hover:bg-downy-600 disabled:bg-downy-300"
+          disabled={!!person1UrlError || !!person2UrlError}
         >
           Save Meal
         </button>
