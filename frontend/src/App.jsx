@@ -18,17 +18,22 @@ Modal.setAppElement('#root');
 const MealEditor = ({ date, mealType, onClose, onSave, initialValues }) => {
   const [person1, setPerson1] = useState(initialValues?.person1 || '');
   const [person2, setPerson2] = useState(initialValues?.person2 || '');
-
+  const [person1Url, setPerson1Url] = useState(initialValues?.person1_url || '');
+  const [person2Url, setPerson2Url] = useState(initialValues?.person2_url || '');
 
   const handleSave = () => {
     onSave({
-      date: format(date, 'yyyy-MM-dd', { locale: de }),  // Use date-fns format with German locale
+      date: format(date, 'yyyy-MM-dd', { locale: de }),
       meal_type: mealType,
       person1,
-      person2
+      person2,
+      person1_url: person1Url,
+      person2_url: person2Url
     });
     onClose();
   };
+
+
 
   return (
     <Modal
@@ -52,6 +57,13 @@ const MealEditor = ({ date, mealType, onClose, onSave, initialValues }) => {
             className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
             placeholder="Enter meal"
           />
+          <input
+            type="url"
+            value={person1Url}
+            onChange={(e) => setPerson1Url(e.target.value)}
+            placeholder="URL (optional)"
+            className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -62,6 +74,13 @@ const MealEditor = ({ date, mealType, onClose, onSave, initialValues }) => {
             onChange={(e) => setPerson2(e.target.value)}
             className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
             placeholder="Enter meal"
+          />
+          <input
+            type="url"
+            value={person2Url}
+            onChange={(e) => setPerson2Url(e.target.value)}
+            placeholder="URL (optional)"
+            className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
           />
         </div>
       </div>
@@ -241,7 +260,23 @@ const App = () => {
                           })}
                           className="px-6 py-4 text-sm cursor-pointer hover:bg-gray-100"
                         >
-                          {((mealType === 'lunch' ? lunch : dinner)?.[`person${person}`]) || (
+                          {(mealType === 'lunch' ? lunch : dinner)?.[`person${person}`] ? (
+                            ((mealType === 'lunch' ? lunch : dinner)?.[`person${person}_url`] ? (
+                              <a
+                                href={(mealType === 'lunch' ? lunch : dinner)[`person${person}_url`]}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-downy-600 hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {(mealType === 'lunch' ? lunch : dinner)[`person${person}`]}
+                              </a>
+                            ) : (
+                              <span>
+                                {(mealType === 'lunch' ? lunch : dinner)[`person${person}`]}
+                              </span>
+                            ))
+                          ) : (
                             <span className="text-gray-400 italic">Add meal</span>
                           )}
                         </td>

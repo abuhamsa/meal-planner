@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from datetime import datetime, timedelta
+from flask_migrate import Migrate
 import os
 
 app = Flask(__name__)
@@ -11,13 +12,16 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'me
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 class Meal(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False)
-    meal_type = db.Column(db.String(10), nullable=False)  # 'lunch' or 'dinner'
+    meal_type = db.Column(db.String(10), nullable=False)
     person1 = db.Column(db.String(100))
     person2 = db.Column(db.String(100))
+    person1_url = db.Column(db.String(500))  # New field
+    person2_url = db.Column(db.String(500))  # New field
 
     def to_dict(self):
         return {
@@ -25,7 +29,9 @@ class Meal(db.Model):
             'date': self.date.isoformat(),
             'meal_type': self.meal_type,
             'person1': self.person1,
-            'person2': self.person2
+            'person2': self.person2,
+            'person1_url': self.person1_url,  # Include in response
+            'person2_url': self.person2_url   # Include in response
         }
 
 with app.app_context():
@@ -46,15 +52,16 @@ def save_meal():
     data = request.get_json()
     date = datetime.strptime(data['date'], '%Y-%m-%d').date()
     
-    # Delete existing entries for this date and meal type
+    # Update existing entries
     Meal.query.filter_by(date=date, meal_type=data['meal_type']).delete()
     
-    # Create new entries
     meal = Meal(
         date=date,
         meal_type=data['meal_type'],
         person1=data['person1'],
-        person2=data['person2']
+        person2=data['person2'],
+        person1_url=data.get('person1_url'),  # Add URL fields
+        person2_url=data.get('person2_url')
     )
     db.session.add(meal)
     db.session.commit()
