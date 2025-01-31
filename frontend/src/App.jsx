@@ -14,7 +14,8 @@ import {
 import Spinner from './components/Spinner';  // Keep this as is, it's correct with default export
 import { isValidUrl } from './utils/helpers';
 
-
+// Add this right after the imports and before component definitions
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 Modal.setAppElement('#root');
 
 const IconLink = () => (
@@ -66,9 +67,9 @@ const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
   const handleSubmit = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      await axios.post('http://localhost:5000/api/config', {
+      await axios.post(`${API_BASE_URL}/api/config`, {
         person1_label: person1Label,
         person2_label: person2Label
       });
@@ -92,7 +93,7 @@ const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
       overlayClassName="fixed inset-0 bg-downy-950/20 backdrop-blur-sm"
     >
       <h2 className="text-xl font-semibold mb-4 text-downy-800">Settings</h2>
-      
+
       {error && (
         <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
           {error}
@@ -346,7 +347,7 @@ const App = () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await axios.get('http://localhost:5000/api/meals/week', {
+        const response = await axios.get(`${API_BASE_URL}/api/meals/week`, {
           params: { start_date: formatDateAPI(startDate) }
         });
         setMeals(response.data);
@@ -359,7 +360,7 @@ const App = () => {
     fetchMeals();
     const fetchConfig = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/config');
+        const response = await axios.get(`${API_BASE_URL}/api/config`);
         setPersonLabels({
           person1: response.data.person1_label,
           person2: response.data.person2_label
@@ -387,8 +388,8 @@ const App = () => {
     setLoading(true);
     setError(null);
     try {
-      await axios.post('http://localhost:5000/api/meals', mealData);
-      const response = await axios.get('http://localhost:5000/api/meals/week', {
+      await axios.post(`${API_BASE_URL}/api/meals`, mealData);
+      const response = await axios.get(`${API_BASE_URL}/api/meals/week`, {
         params: { start_date: formatDateAPI(startDate) }
       });
       setMeals(response.data);
