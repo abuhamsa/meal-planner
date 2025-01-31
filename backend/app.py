@@ -6,7 +6,10 @@ from flask_migrate import Migrate
 import os
 
 app = Flask(__name__)
-CORS(app)
+app.config['CORS_ORIGINS'] = os.environ.get('CORS_ORIGINS', 'http://localhost:3000').split(',')
+# Sett this properly if going public
+# CORS(app, resources={r"/api/*": {"origins": app.config['CORS_ORIGINS']}})
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'meals.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False

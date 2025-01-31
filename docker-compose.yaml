@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    networks:
+      - meal-network
+    environment:
+      - FLASK_ENV=production
+      - CORS_ORIGINS=http://localhost:3000,http://frontend:80
+
+  frontend:
+    build: 
+      context: ./frontend
+      args:
+        - VITE_API_URL=__VITE_API_URL__
+    ports:
+      - "3000:80"
+    networks:
+      - meal-network
+    environment:
+      - VITE_API_URL=http://192.168.1.147:5000
+    depends_on:
+      - backend
+
+networks:
+  meal-network:
+    driver: bridge
