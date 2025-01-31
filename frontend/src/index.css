@@ -43,3 +43,12 @@
   @apply !border-b-downy-100;
 }
 
+/* Add transition for smoother hover effects */
+.react-modal-content {
+  transition: all 0.3s ease-out;
+}
+
+/* Fix for modal positioning */
+.react-datepicker-popper {
+  z-index: 1000;
+}

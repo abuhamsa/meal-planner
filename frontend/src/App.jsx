@@ -35,7 +35,114 @@ const IconLink = () => (
   </svg>
 );
 
-const MealEditor = ({ date, mealType, onClose, onSave, initialValues }) => {
+const GearIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    className="w-6 h-6 text-downy-600 hover:text-downy-700 cursor-pointer transition-colors"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"
+    />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+    />
+  </svg>
+);
+
+const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
+  const [person1Label, setPerson1Label] = useState(initialLabels.person1);
+  const [person2Label, setPerson2Label] = useState(initialLabels.person2);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      await axios.post('http://localhost:5000/api/config', {
+        person1_label: person1Label,
+        person2_label: person2Label
+      });
+      onSave({
+        person1: person1Label,
+        person2: person2Label
+      });
+      onClose();
+    } catch (err) {
+      setError('Failed to save settings. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onRequestClose={onClose}
+      className="bg-white rounded-lg p-6 max-w-md mx-auto mt-20 shadow-xl border-2 border-downy-100"
+      overlayClassName="fixed inset-0 bg-downy-950/20 backdrop-blur-sm"
+    >
+      <h2 className="text-xl font-semibold mb-4 text-downy-800">Settings</h2>
+      
+      {error && (
+        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-downy-700 mb-1">
+            Label for Person 1
+          </label>
+          <input
+            value={person1Label}
+            onChange={(e) => setPerson1Label(e.target.value)}
+            className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-downy-700 mb-1">
+            Label for Person 2
+          </label>
+          <input
+            value={person2Label}
+            onChange={(e) => setPerson2Label(e.target.value)}
+            className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-3 justify-end mt-6">
+        <button
+          onClick={onClose}
+          className="px-4 py-2 text-gray-600 bg-downy-100 hover:bg-downy-200 rounded-md"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSubmit}
+          className="px-4 py-2 bg-downy-500 text-white rounded-md hover:bg-downy-600 disabled:bg-downy-300"
+          disabled={loading}
+        >
+          {loading ? 'Saving...' : 'Save Settings'}
+        </button>
+      </div>
+    </Modal>
+  );
+};
+
+const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValues }) => {
   const [person1, setPerson1] = useState(initialValues?.person1 || '');
   const [person2, setPerson2] = useState(initialValues?.person2 || '');
   const [person1Url, setPerson1Url] = useState(initialValues?.person1_url || '');
@@ -101,7 +208,7 @@ const MealEditor = ({ date, mealType, onClose, onSave, initialValues }) => {
       <div className="space-y-4 mb-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Person 1
+            {personLabels.person1}
           </label>
           <input
             value={person1}
@@ -146,7 +253,7 @@ const MealEditor = ({ date, mealType, onClose, onSave, initialValues }) => {
         </label>
         <div>
           <label className="block text-sm font-medium text-downy-700 mb-1">
-            Person 2
+            {personLabels.person2}
           </label>
           <input
             value={copyToPerson2 ? person1 : person2}
@@ -216,6 +323,9 @@ const App = () => {
   const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [personLabels, setPersonLabels] = useState({ person1: 'Person 1', person2: 'Person 2' });
+  const [showSettings, setShowSettings] = useState(false);
+  const [configLoading, setConfigLoading] = useState(true);
 
   const handleCurrentWeek = () => {
     const currentWeekStart = startOfWeek(new Date(), weekConfig);
@@ -247,6 +357,21 @@ const App = () => {
       }
     };
     fetchMeals();
+    const fetchConfig = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/config');
+        setPersonLabels({
+          person1: response.data.person1_label,
+          person2: response.data.person2_label
+        });
+      } catch (error) {
+        console.error('Error loading config:', error);
+      } finally {
+        setConfigLoading(false);
+      }
+    };
+
+    fetchConfig();
   }, [startDate]);
 
   const handleDateChange = (date) => {
@@ -274,6 +399,10 @@ const App = () => {
     }
   };
 
+  const handleSaveSettings = (newLabels) => {
+    setPersonLabels(newLabels);
+  };
+
   return (
     <div className="min-h-screen bg-downy-50 p-8">
       <div className="max-w-6xl mx-auto">
@@ -286,7 +415,7 @@ const App = () => {
           </div>
         )}
 
-        {loading && (
+        {(loading || configLoading) && (
           <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
             <Spinner className="w-16 h-16 text-white" />
           </div>
@@ -338,10 +467,10 @@ const App = () => {
             <thead className="bg-downy-300">
               <tr>
                 <th className="px-4 py-4 text-left text-sm font-semibold text-downy-900 w-40">Date</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-downy-900">Lunch (P1)</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-downy-900">Lunch (P2)</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-downy-900">Dinner (P1)</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-downy-900">Dinner (P2)</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-downy-900">Lunch ({personLabels.person1})</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-downy-900">Lunch ({personLabels.person2})</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-downy-900">Dinner ({personLabels.person1})</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-downy-900">Dinner ({personLabels.person2})</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -397,6 +526,7 @@ const App = () => {
 
         {editing && (
           <MealEditor
+            personLabels={personLabels}
             date={editing.date}
             mealType={editing.mealType}
             onClose={() => setEditing(null)}
@@ -405,6 +535,22 @@ const App = () => {
           />
         )}
       </div>
+      <div className="fixed bottom-4 right-4">
+        <button
+          onClick={() => setShowSettings(true)}
+          className="p-3 bg-downy-100 hover:bg-downy-200 rounded-full shadow-lg"
+          aria-label="Settings"
+        >
+          <GearIcon />
+        </button>
+      </div>
+
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        initialLabels={personLabels}
+        onSave={handleSaveSettings}
+      />
     </div>
   );
 };

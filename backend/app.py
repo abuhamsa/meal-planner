@@ -34,8 +34,45 @@ class Meal(db.Model):
             'person2_url': self.person2_url   # Include in response
         }
 
+class Config(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(50), unique=True, nullable=False)
+    value = db.Column(db.String(500), nullable=False)
+
 with app.app_context():
     db.create_all()
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    config = {
+        'person1_label': 'Person 1',  # Default values
+        'person2_label': 'Person 2'
+    }
+    
+    # Try to get from database
+    person1 = Config.query.filter_by(key='person1_label').first()
+    person2 = Config.query.filter_by(key='person2_label').first()
+    
+    if person1:
+        config['person1_label'] = person1.value
+    if person2:
+        config['person2_label'] = person2.value
+    
+    return jsonify(config)
+
+@app.route('/api/config', methods=['POST'])
+def update_config():
+    data = request.get_json()
+    
+    for key, value in data.items():
+        config = Config.query.filter_by(key=key).first()
+        if config:
+            config.value = value
+        else:
+            config = Config(key=key, value=value)
+            db.session.add(config)
+    
+    db.session.commit()
+    return jsonify({'status': 'success'})
 
 @app.route('/api/meals/week', methods=['GET'])
 def get_week_meals():
