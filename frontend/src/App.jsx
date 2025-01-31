@@ -15,6 +15,24 @@ import Spinner from './components/Spinner';  // Keep this as is, it's correct wi
 
 Modal.setAppElement('#root');
 
+const IconLink = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    className="w-4 h-4 inline-block ml-1 text-downy-500"
+    aria-hidden="true"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+    />
+  </svg>
+);
+
 const MealEditor = ({ date, mealType, onClose, onSave, initialValues }) => {
   const [person1, setPerson1] = useState(initialValues?.person1 || '');
   const [person2, setPerson2] = useState(initialValues?.person2 || '');
@@ -260,25 +278,24 @@ const App = () => {
                           })}
                           className="px-6 py-4 text-sm cursor-pointer hover:bg-gray-100"
                         >
-                          {(mealType === 'lunch' ? lunch : dinner)?.[`person${person}`] ? (
-                            ((mealType === 'lunch' ? lunch : dinner)?.[`person${person}_url`] ? (
-                              <a
-                                href={(mealType === 'lunch' ? lunch : dinner)[`person${person}_url`]}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-downy-600 hover:underline"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {(mealType === 'lunch' ? lunch : dinner)[`person${person}`]}
-                              </a>
-                            ) : (
-                              <span>
-                                {(mealType === 'lunch' ? lunch : dinner)[`person${person}`]}
-                              </span>
-                            ))
+                          {((mealType === 'lunch' ? lunch : dinner)?.[`person${person}_url`] ? (
+                            <a
+                              href={(mealType === 'lunch' ? lunch : dinner)[`person${person}_url`]}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-downy-600 hover:underline inline-flex items-center"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {(mealType === 'lunch' ? lunch : dinner)[`person${person}`]}
+                              <IconLink />
+                            </a>
                           ) : (
-                            <span className="text-gray-400 italic">Add meal</span>
-                          )}
+                            <span>
+                              {(mealType === 'lunch' ? lunch : dinner)?.[`person${person}`] || (
+                                <span className="text-gray-400 italic">Add meal</span>
+                              )}
+                            </span>
+                          ))}
                         </td>
                       ))
                     )}
