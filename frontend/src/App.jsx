@@ -3,13 +3,13 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import axios from 'axios';
 import Modal from 'react-modal';
-import { startOfWeek, addDays,format } from 'date-fns';
+import { startOfWeek, addDays, format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { 
-  formatDateInGerman, 
-  formatDateAPI, 
-  formatDateDisplay, 
-  weekConfig 
+import {
+  formatDateInGerman,
+  formatDateAPI,
+  formatDateDisplay,
+  weekConfig
 } from './utils/helpers';
 import Spinner from './components/Spinner';  // Keep this as is, it's correct with default export
 
@@ -20,27 +20,27 @@ const MealEditor = ({ date, mealType, onClose, onSave, initialValues }) => {
   const [person2, setPerson2] = useState(initialValues?.person2 || '');
 
 
-const handleSave = () => {
-  onSave({
-    date: format(date, 'yyyy-MM-dd', { locale: de }),  // Use date-fns format with German locale
-    meal_type: mealType,
-    person1,
-    person2
-  });
-  onClose();
-};
+  const handleSave = () => {
+    onSave({
+      date: format(date, 'yyyy-MM-dd', { locale: de }),  // Use date-fns format with German locale
+      meal_type: mealType,
+      person1,
+      person2
+    });
+    onClose();
+  };
 
   return (
     <Modal
       isOpen={true}
       onRequestClose={onClose}
-      className="bg-white rounded-lg p-6 max-w-md mx-auto mt-20 shadow-xl"
-      overlayClassName="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
+      className="bg-white rounded-lg p-6 max-w-md mx-auto mt-20 shadow-xl border-2 border-downy-100"
+      overlayClassName="fixed inset-0 bg-downy-950/20 backdrop-blur-sm"
     >
-      <h2 className="text-xl font-semibold mb-4 text-gray-800">
+      <h2 className="text-xl font-semibold mb-4 text-downy-800">
         {formatDateInGerman(date)} - {mealType.charAt(0).toUpperCase() + mealType.slice(1)}
       </h2>
-      
+
       <div className="space-y-4 mb-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -49,7 +49,7 @@ const handleSave = () => {
           <input
             value={person1}
             onChange={(e) => setPerson1(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+            className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
             placeholder="Enter meal"
           />
         </div>
@@ -60,7 +60,7 @@ const handleSave = () => {
           <input
             value={person2}
             onChange={(e) => setPerson2(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+            className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
             placeholder="Enter meal"
           />
         </div>
@@ -69,13 +69,13 @@ const handleSave = () => {
       <div className="flex gap-3 justify-end">
         <button
           onClick={onClose}
-          className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+          className="px-4 py-2 text-gray-600 bg-downy-100 hover:bg-downy-200 rounded-md"
         >
           Cancel
         </button>
         <button
           onClick={handleSave}
-          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+          className="px-4 py-2 bg-downy-500 text-white rounded-md hover:bg-downy-600"
         >
           Save Meal
         </button>
@@ -149,10 +149,10 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-downy-50 p-8">
       <div className="max-w-6xl mx-auto">
         {error && (
-          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg flex justify-between items-center">
+          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg flex justify-between items-center border border-red-200">
             <span>{error}</span>
             <button onClick={() => setError(null)} className="text-red-700 hover:text-red-900">
               ×
@@ -167,55 +167,55 @@ const App = () => {
         )}
 
         <div className="mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Mealplanner NG <span className="text-lg text-gray-600">({formatWeekRange()})</span>
+          <h1 className="text-3xl font-bold text-downy-900">
+            Mealplanner NG <span className="text-lg text-downy-700">({formatWeekRange()})</span>
           </h1>
-          
+
           <div className="flex items-center gap-4">
-  <button 
-    onClick={() => handleWeekNavigation(-1)}
-    className="p-2 hover:bg-gray-100 rounded-md"
-  >
-    ← Previous
-  </button>
-  
-  <button
-    onClick={handleCurrentWeek}
-    className="px-3 py-2 bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors"
-  >
-    Today
-  </button>
-  
-  <DatePicker
-    selected={startDate}
-    onChange={handleDateChange}
-    dateFormat="dd.MM.yyyy"
-    locale={de}
-    calendarStartDay={1}
-    className="px-4 py-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary outline-none w-40 text-center"
-    showWeekNumbers
-    weekLabel="KW"
-    placeholderText="Select week"
-  />
-  
-  <button 
-    onClick={() => handleWeekNavigation(1)}
-    className="p-2 hover:bg-gray-100 rounded-md"
-  >
-    Next →
-  </button>
-</div>
+            <button
+              onClick={() => handleWeekNavigation(-1)}
+              className="p-2 text-downy-700 hover:bg-downy-100 rounded-md transition-colors"
+            >
+              ← Previous
+            </button>
+
+            <button
+              onClick={handleCurrentWeek}
+              className="px-3 py-2 bg-downy-200 text-downy-700 rounded-md hover:bg-downy-300 transition-colors"
+            >
+              Current Week
+            </button>
+
+            <DatePicker
+              selected={startDate}
+              onChange={handleDateChange}
+              dateFormat="dd.MM.yyyy"
+              locale={de}
+              calendarStartDay={1}
+              className="px-4 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none w-40 text-center text-downy-800"
+              showWeekNumbers
+              weekLabel="KW"
+              placeholderText="Select week"
+            />
+
+            <button
+              onClick={() => handleWeekNavigation(1)}
+              className="p-2 text-downy-700 hover:bg-downy-100 rounded-md transition-colors"
+            >
+              Next →
+            </button>
+          </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
           <table className="w-full min-w-[800px]">
-            <thead className="bg-gray-50">
+            <thead className="bg-downy-300">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 min-w-[160px]">Date</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Lunch (P1)</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Lunch (P2)</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Dinner (P1)</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Dinner (P2)</th>
+                <th className="px-4 py-4 text-left text-sm font-semibold text-downy-900 w-40">Date</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-downy-900">Lunch (P1)</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-downy-900">Lunch (P2)</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-downy-900">Dinner (P1)</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-downy-900">Dinner (P2)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -226,18 +226,18 @@ const App = () => {
 
                 return (
                   <tr key={dateStr} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 text-sm text-gray-600 font-medium">
+                    <td className="px-4 py-4 text-sm text-downy-600 font-medium w-32 sm:w-40 whitespace-nowrap">
                       {formatDateInGerman(date)}
                     </td>
-                    
-                    {['lunch', 'dinner'].flatMap(mealType => 
+
+                    {['lunch', 'dinner'].flatMap(mealType =>
                       [1, 2].map(person => (
                         <td
                           key={`${dateStr}-${mealType}-${person}`}
-                          onClick={() => setEditing({ 
-                            date, 
-                            mealType, 
-                            data: mealType === 'lunch' ? lunch : dinner 
+                          onClick={() => setEditing({
+                            date,
+                            mealType,
+                            data: mealType === 'lunch' ? lunch : dinner
                           })}
                           className="px-6 py-4 text-sm cursor-pointer hover:bg-gray-100"
                         >

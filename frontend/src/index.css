@@ -2,19 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom datepicker styling */
 .react-datepicker {
-  @apply border border-gray-200 rounded-lg shadow-lg;
+  @apply border border-downy-200 rounded-lg shadow-lg;
 }
 
 .react-datepicker__header {
-  @apply bg-gray-50 border-b border-gray-200;
+  @apply bg-downy-100 border-b border-downy-200;
 }
 
 .react-datepicker__current-month {
-  @apply text-gray-800 font-semibold;
+  @apply text-downy-800 font-semibold;
 }
 
 .react-datepicker__day--selected {
-  @apply bg-primary text-white hover:bg-primary/90;
+  @apply bg-downy-500 text-white hover:bg-downy-600;
 }
+
+.react-datepicker__week-number {
+  @apply text-downy-700 bg-downy-50 hover:bg-downy-100;
+}
+
+.react-datepicker__week-number--selected {
+  @apply bg-downy-200 text-downy-900 hover:bg-downy-300;
+}
+
+.react-datepicker__day--keyboard-selected {
+  @apply bg-downy-100 text-downy-900;
+}
+
+/* Add this to your index.css */
+.react-datepicker__triangle {
+  @apply !border-b-downy-200;
+}
+
+.react-datepicker__triangle::before {
+  @apply !border-b-downy-200;
+}
+
+.react-datepicker__triangle::after {
+  @apply !border-b-downy-100;
+}
+
