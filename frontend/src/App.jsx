@@ -318,7 +318,7 @@ const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValu
   </label>
   <div className="relative">
     <input
-      value={person1}
+      value={person2}
       onChange={(e) => {
         setPerson2(e.target.value);
         setSearchTerm(e.target.value);

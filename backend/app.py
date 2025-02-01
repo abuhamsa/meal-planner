@@ -46,18 +46,15 @@ with app.app_context():
 @app.route('/api/config', methods=['GET'])
 def get_config():
     config = {
-        'person1_label': 'Person 1',  # Default values
-        'person2_label': 'Person 2'
+        'person1_label': 'Person 1',
+        'person2_label': 'Person 2',
+        'search_enabled': 'true'  # Default to enabled
     }
     
-    # Try to get from database
-    person1 = Config.query.filter_by(key='person1_label').first()
-    person2 = Config.query.filter_by(key='person2_label').first()
-    
-    if person1:
-        config['person1_label'] = person1.value
-    if person2:
-        config['person2_label'] = person2.value
+    # Get all config entries at once
+    config_entries = Config.query.all()
+    for entry in config_entries:
+        config[entry.key] = entry.value
     
     return jsonify(config)
 
