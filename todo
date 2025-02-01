@@ -2,5 +2,5 @@
 [] handling CORS Stuff
 [] Use JWT or OAuth for user authentication. / authentik
 [] Switch to gunicorn
-[] UI Lock Date Column while scrolling on iphone
+[x] UI Lock Date Column while scrolling on iphone
 [] Send notification

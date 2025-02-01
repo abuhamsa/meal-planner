@@ -467,11 +467,11 @@ const App = () => {
           <table className="w-full min-w-[800px]">
             <thead className="bg-downy-300">
               <tr>
-                <th className="px-4 py-4 text-left text-sm font-semibold text-downy-900 w-40">Date</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-downy-900">Lunch ({personLabels.person1})</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-downy-900">Lunch ({personLabels.person2})</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-downy-900">Dinner ({personLabels.person1})</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-downy-900">Dinner ({personLabels.person2})</th>
+                <th className="bg-downy-300 sticky left-0 px-4 py-4 text-left text-sm font-semibold text-downy-900 w-[160px]  shadow-[4px_0_4px_-2px_rgba(0,0,0,0.05)]">Date</th>
+                <th className="bg-downy-300 px-6 py-4 text-left text-sm font-semibold text-downy-900">Lunch ({personLabels.person1})</th>
+                <th className="bg-downy-300 px-6 py-4 text-left text-sm font-semibold text-downy-900">Lunch ({personLabels.person2})</th>
+                <th className="bg-downy-300 px-6 py-4 text-left text-sm font-semibold text-downy-900">Dinner ({personLabels.person1})</th>
+                <th className="bg-downy-300 px-6 py-4 text-left text-sm font-semibold text-downy-900">Dinner ({personLabels.person2})</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -482,7 +482,7 @@ const App = () => {
 
                 return (
                   <tr key={dateStr} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-4 text-sm text-downy-600 font-medium w-32 sm:w-40 whitespace-nowrap">
+                    <td className="sticky left-0 bg-white px-4 py-4 text-sm text-downy-600 font-medium w-[160px] shadow-[4px_0_4px_-2px_rgba(0,0,0,0.05)]">
                       {formatDateInGerman(date)}
                     </td>
 
