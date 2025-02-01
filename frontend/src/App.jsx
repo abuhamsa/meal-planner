@@ -151,6 +151,9 @@ const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValu
   const [person1UrlError, setPerson1UrlError] = useState('');
   const [person2UrlError, setPerson2UrlError] = useState('');
   const [copyToPerson2, setCopyToPerson2] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [activeField, setActiveField] = useState(null);
 
   const validateUrls = () => {
     let isValid = true;
@@ -179,6 +182,43 @@ const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValu
       setPerson2Url(person1Url);
     }
   }, [person1, person1Url, copyToPerson2]);
+
+
+  useEffect(() => {
+    const delayDebounce = setTimeout(async () => {
+      if (searchTerm.length > 2) {
+        try {
+          const response = await axios.get(`${API_BASE_URL}/api/meals/search`, {
+            params: { q: searchTerm }
+          });
+          const uniqueMeals = response.data.reduce((acc, meal) => {
+            if (!acc.some(m => m.name.toLowerCase() === meal.name.toLowerCase())) {
+              acc.push(meal);
+            }
+            return acc;
+          }, []);
+          setSearchResults(uniqueMeals);
+        } catch (error) {
+          console.error('Search error:', error);
+        }
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchTerm]);
+
+  const handleMealSelect = (meal) => {
+    if (activeField === 'person1') {
+      setPerson1(meal.name);
+      setPerson1Url(meal.url || '');
+    } else {
+      setPerson2(meal.name);
+      setPerson2Url(meal.url || '');
+    }
+    setSearchResults([]);
+  };
 
   const handleSave = () => {
     if (!validateUrls()) return;
@@ -211,12 +251,32 @@ const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValu
           <label className="block text-sm font-medium text-gray-700 mb-1">
             {personLabels.person1}
           </label>
-          <input
-            value={person1}
-            onChange={(e) => setPerson1(e.target.value)}
-            className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
-            placeholder="Enter meal"
-          />
+          <div className="relative">
+            <input
+              value={person1}
+              onChange={(e) => {
+                setPerson1(e.target.value);
+                setSearchTerm(e.target.value);
+              }}
+              onFocus={() => setActiveField('person1')}
+              className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
+              placeholder="Enter meal"
+            />
+            {activeField === 'person1' && searchResults.length > 0 && (
+              <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md max-h-60 overflow-auto border border-downy-200">
+                {searchResults.map((meal, index) => (
+                  <div
+                    key={index}
+                    onClick={() => handleMealSelect(meal)}
+                    className="px-4 py-2 hover:bg-downy-50 cursor-pointer text-sm text-downy-900"
+                  >
+                    {meal.name}
+                    {meal.url && <span className="text-downy-500 ml-2 text-xs">({new URL(meal.url).hostname})</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="mt-2">
             <input
               type="url"
@@ -253,20 +313,36 @@ const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValu
           <span className="text-sm text-downy-700">Same meal for Person 2</span>
         </label>
         <div>
-          <label className="block text-sm font-medium text-downy-700 mb-1">
-            {personLabels.person2}
-          </label>
-          <input
-            value={copyToPerson2 ? person1 : person2}
-            onChange={(e) => {
-              setPerson2(e.target.value);
-              setCopyToPerson2(false); // Uncheck if manual edit
-            }}
-            disabled={copyToPerson2}
-            className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none ${copyToPerson2 ? 'bg-gray-50 cursor-not-allowed' : ''
-              }`}
-            placeholder="Meal name"
-          />
+  <label className="block text-sm font-medium text-gray-700 mb-1">
+    {personLabels.person2}
+  </label>
+  <div className="relative">
+    <input
+      value={person1}
+      onChange={(e) => {
+        setPerson2(e.target.value);
+        setSearchTerm(e.target.value);
+        setCopyToPerson2(false); // Uncheck if manual edit
+      }}
+      onFocus={() => setActiveField('person2')}
+      className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
+      placeholder="Enter meal"
+    />
+    {activeField === 'person2' && searchResults.length > 0 && (
+      <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md max-h-60 overflow-auto border border-downy-200">
+        {searchResults.map((meal, index) => (
+          <div
+            key={index}
+            onClick={() => handleMealSelect(meal)}
+            className="px-4 py-2 hover:bg-downy-50 cursor-pointer text-sm text-downy-900"
+          >
+            {meal.name}
+            {meal.url && <span className="text-downy-500 ml-2 text-xs">({new URL(meal.url).hostname})</span>}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
           <div className="mt-2">
             <input
               type="url"
@@ -374,6 +450,7 @@ const App = () => {
 
     fetchConfig();
   }, [startDate]);
+
 
   const handleDateChange = (date) => {
     const monday = startOfWeek(date, weekConfig);

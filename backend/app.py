@@ -107,6 +107,26 @@ def save_meal():
     
     return jsonify({'status': 'success'})
 
+@app.route('/api/meals/search')
+def search_meals():
+    search_term = request.args.get('q', '')
+    results = Meal.query.filter(
+        (Meal.person1.ilike(f'%{search_term}%')) | 
+        (Meal.person2.ilike(f'%{search_term}%'))
+    ).all()
+    
+    meals = []
+    seen = set()
+    for meal in reversed(results):  # Get most recent first
+        for person in ['person1', 'person2']:
+            name = getattr(meal, person)
+            url = getattr(meal, f'{person}_url')
+            if name and name.lower() not in seen:
+                seen.add(name.lower())
+                meals.append({'name': name, 'url': url})
+    
+    return jsonify(meals[:10])  # Return top 10 results
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
