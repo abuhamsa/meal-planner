@@ -9,7 +9,7 @@ services:
       - meal-network
     environment:
       - FLASK_ENV=production
-      - CORS_ORIGINS=http://localhost:3000,http://frontend:80
+      - CORS_ORIGINS=*
 
   frontend:
     build: 
