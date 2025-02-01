@@ -10,7 +10,9 @@ app.config['CORS_ORIGINS'] = os.environ.get('CORS_ORIGINS', '*').split(',')
 # Sett this properly if going public
 CORS(app, resources={r"/api/*": {"origins": app.config['CORS_ORIGINS']}})
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'meals.db')
+db_dir = os.path.join(basedir, 'data')
+os.makedirs(db_dir, exist_ok=True)  # Ensure the directory exists
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(db_dir, 'meals.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -41,8 +43,7 @@ class Config(db.Model):
     key = db.Column(db.String(50), unique=True, nullable=False)
     value = db.Column(db.String(500), nullable=False)
 
-with app.app_context():
-    db.create_all()
+
 @app.route('/api/config', methods=['GET'])
 def get_config():
     config = {
