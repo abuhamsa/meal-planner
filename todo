@@ -1,5 +1,0 @@
-[] generate readme
-[] handling CORS Stuff
-[] Use JWT or OAuth for user authentication. / authentik
-[] Switch to gunicorn
-[x] UI Lock Date Column while scrolling on iphone
