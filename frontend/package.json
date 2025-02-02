@@ -17,7 +17,7 @@
     "react-datepicker": "^4.25.0",
     "react-dom": "^18.3.1",
     "react-modal": "^3.16.3",
-    "vite": "^5.4.14"
+    "vite": "^6.0.11"
   },
   "devDependencies": {
     "@types/react": "^18.3.18",
