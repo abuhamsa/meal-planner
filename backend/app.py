@@ -4,6 +4,7 @@ from flask_cors import CORS
 from datetime import datetime, timedelta
 from flask_migrate import Migrate
 import os
+from pathlib import Path
 
 # Version should be in MAJOR.MINOR.PATCH format (semantic versioning)
 APP_VERSION = "0.1.0"  # Update this with each release
@@ -14,10 +15,15 @@ app = Flask(__name__)
 app.config['CORS_ORIGINS'] = os.environ.get('CORS_ORIGINS', '*').split(',')
 # Sett this properly if going public
 CORS(app, resources={r"/api/*": {"origins": app.config['CORS_ORIGINS']}})
-basedir = os.path.abspath(os.path.dirname(__file__))
-db_dir = os.path.join(basedir, 'data')
-os.makedirs(db_dir, exist_ok=True)  # Ensure the directory exists
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(db_dir, 'meals.db')
+# Database configuration
+basedir = Path(__file__).parent.resolve()
+db_dir = basedir / "data"
+db_path = db_dir / "meals.db"
+
+# Ensure directory exists with proper permissions
+db_dir.mkdir(mode=0o755, parents=True, exist_ok=True)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -136,7 +142,21 @@ def search_meals():
     
     return jsonify(meals[:10])  # Return top 10 results
 
+@app.route('/healthz')
+def health_check():
+    return jsonify(status='ok'), 200
+
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-    app.run(host='0.0.0.0')
+    if os.environ.get('FLASK_ENV') == 'development':
+        from argparse import ArgumentParser
+        
+        parser = ArgumentParser()
+        parser.add_argument('--create-db', action='store_true')
+        args = parser.parse_args()
+
+        if args.create_db:
+            with app.app_context():
+                db.create_all()
+                print("Initial database created")
+        else:
+            app.run(host='0.0.0.0', port=5000)
