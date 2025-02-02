@@ -5,6 +5,11 @@ from datetime import datetime, timedelta
 from flask_migrate import Migrate
 import os
 
+# Version should be in MAJOR.MINOR.PATCH format (semantic versioning)
+APP_VERSION = "0.1.0"  # Update this with each release
+
+
+
 app = Flask(__name__)
 app.config['CORS_ORIGINS'] = os.environ.get('CORS_ORIGINS', '*').split(',')
 # Sett this properly if going public
@@ -42,7 +47,13 @@ class Config(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(50), unique=True, nullable=False)
     value = db.Column(db.String(500), nullable=False)
-
+    
+# Add this endpoint
+@app.route('/api/version')
+def get_version():
+    return jsonify({
+        'backend_version': APP_VERSION
+    })
 
 @app.route('/api/config', methods=['GET'])
 def get_config():

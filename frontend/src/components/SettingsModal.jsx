@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Modal from 'react-modal';
 import { API_BASE_URL } from '../config';
@@ -8,6 +8,32 @@ const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
     const [person2Label, setPerson2Label] = useState(initialLabels.person2);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [versions, setVersions] = useState({
+        frontend: import.meta.env.VITE_APP_VERSION,
+        backend: 'Loading...'
+    });
+
+    useEffect(() => {
+        const fetchVersions = async () => {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/version`);
+                setVersions(prev => ({
+                    ...prev,
+                    backend: response.data.backend_version
+                }));
+            } catch (error) {
+                console.error('Error fetching versions:', error);
+                setVersions(prev => ({
+                    ...prev,
+                    backend: 'Unavailable'
+                }));
+            }
+        };
+
+        if (isOpen) {
+            fetchVersions();
+        }
+    }, [isOpen]);
 
     const handleSubmit = async () => {
         setLoading(true);
@@ -83,6 +109,12 @@ const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
                 >
                     {loading ? 'Saving...' : 'Save Settings'}
                 </button>
+            </div>
+            <div className="mt-8 pt-4 border-t border-downy-100">
+                <div className="text-sm text-downy-500">
+                    <p>Frontend Version: {versions.frontend}</p>
+                    <p className="mt-1">Backend Version: {versions.backend}</p>
+                </div>
             </div>
         </Modal>
     );
