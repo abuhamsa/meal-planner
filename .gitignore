@@ -5,3 +5,4 @@ backend/migrations/__pycache__/
 backend/data/meals.db
 backend/migrations/versions/
 *__pycache__/
+backend/old2ng_migration.py
