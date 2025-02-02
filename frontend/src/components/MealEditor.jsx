@@ -4,9 +4,7 @@ import Modal from 'react-modal';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { isValidUrl, formatDateInGerman } from '../utils/helpers';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
+import { API_BASE_URL } from '../config';
 
 
 const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValues }) => {

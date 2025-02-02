@@ -16,9 +16,9 @@ import MealEditor from './components/MealEditor';
 import SettingsModal from './components/SettingsModal';
 import IconLink from './components/IconLink';
 import GearIcon from './components/GearIcon';
+import { API_BASE_URL } from './config';
 
-// Add this right after the imports and before component definitions
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 Modal.setAppElement('#root');
 
 

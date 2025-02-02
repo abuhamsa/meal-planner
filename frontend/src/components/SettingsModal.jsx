@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import Modal from 'react-modal';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { API_BASE_URL } from '../config';
 
 const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
     const [person1Label, setPerson1Label] = useState(initialLabels.person1);
