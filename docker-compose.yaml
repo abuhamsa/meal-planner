@@ -2,16 +2,23 @@ version: '3.8'
 
 services:
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
-      - "5000:5000"
-    volumes:
-      - ./backend/data/meals.db:/app/meals.db  
-    networks:
-      - meal-network
+      - "8000:8000"
     environment:
       - FLASK_ENV=production
-      - CORS_ORIGINS=*
+      - CORS_ORIGINS=*  # Add frontend URLs
+    volumes:
+      - ./backend/data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3      
+    networks:
+      - meal-network
 
   frontend:
     build: 
@@ -23,7 +30,7 @@ services:
     networks:
       - meal-network
     environment:
-      - VITE_API_URL=http://192.168.1.147:5000
+      - VITE_API_URL=http://192.168.1.147:8000
     depends_on:
       - backend
 

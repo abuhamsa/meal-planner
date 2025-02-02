@@ -1,29 +1,32 @@
-FROM python:3.10-slim
-
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-ENV FLASK_APP=app.py
-ENV FLASK_ENV=production
-
-WORKDIR /app
+FROM python:3.11-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Create app user and directory
+RUN useradd -m appuser && mkdir /app && chown appuser:appuser /app
+USER appuser
+WORKDIR /app
 
-# Copy application files
-COPY . .
+# Set up PATH and ensure scripts directory exists
+RUN mkdir -p /home/appuser/.local/bin && \
+    touch /home/appuser/.local/bin/entrypoint.sh && \
+    chmod +x /home/appuser/.local/bin/entrypoint.sh
+ENV PATH="/home/appuser/.local/bin:${PATH}"
+
+# Copy requirements first for caching
+COPY --chown=appuser:appuser requirements.txt .
+RUN pip install --user --no-cache-dir -r requirements.txt
+
+# Copy application files and entrypoint
+COPY --chown=appuser:appuser . .
+COPY --chown=appuser:appuser entrypoint.sh /home/appuser/.local/bin/
 
 # Make entrypoint executable
-RUN chmod +x /app/entrypoint.sh
+RUN chmod +x /home/appuser/.local/bin/entrypoint.sh
 
-# Use entrypoint script
-ENTRYPOINT ["/app/entrypoint.sh"]
-
-# Default command
-CMD ["flask", "run", "--host=0.0.0.0"]
+# Configure entrypoint and command
+ENTRYPOINT ["entrypoint.sh"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "app:app"]
