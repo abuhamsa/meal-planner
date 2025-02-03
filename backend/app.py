@@ -6,13 +6,26 @@ from flask_migrate import Migrate
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_expects_json import expects_json
+import logging
+from flask import request
+import sys
 
 load_dotenv()
 # Version should be in MAJOR.MINOR.PATCH format (semantic versioning)
 APP_VERSION = "0.1.0"  # Update this with each release
 
+# Configure basic logging to stdout
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
 
+# Get the root logger
+logger = logging.getLogger()
 
 app = Flask(__name__)
 app.config['CORS_ORIGINS'] = os.environ.get('CORS_ORIGINS', '*').split(',')
@@ -56,9 +69,28 @@ class Config(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(50), unique=True, nullable=False)
     value = db.Column(db.String(500), nullable=False)
-    
+
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"]
+)
+
+meal_schema = {
+    "type": "object",
+    "properties": {
+        "date": {"type": "string", "format": "date"},
+        "meal_type": {"type": "string", "enum": ["lunch", "dinner"]},
+        "person1": {"type": "string", "maxLength": 100},
+        "person2": {"type": "string", "maxLength": 100},
+        "person1_url": {"type": "string", "format": "uri"},
+        "person2_url": {"type": "string", "format": "uri"}
+    },
+    "required": ["date", "meal_type"]
+}
+
 # Add this endpoint
-@app.route('/api/version')
+@app.route('/api/version',methods=['GET'])
 def get_version():
     return jsonify({
         'backend_version': APP_VERSION
@@ -94,8 +126,18 @@ def update_config():
     db.session.commit()
     return jsonify({'status': 'success'})
 
+def validate_date(date_str):
+    try:
+        datetime.strptime(date_str, '%Y-%m-%d')
+        return True
+    except ValueError:
+        return False
+
 @app.route('/api/meals/week', methods=['GET'])
 def get_week_meals():
+    date_str = request.args.get('start_date')
+    if not validate_date(date_str):
+        return jsonify({"error": "Invalid date format"}), 400
     start_date = datetime.strptime(request.args.get('start_date'), '%Y-%m-%d').date()
     end_date = start_date + timedelta(days=6)
     
@@ -105,6 +147,7 @@ def get_week_meals():
     return jsonify(meals_data)
 
 @app.route('/api/meals', methods=['POST'])
+@expects_json(meal_schema)
 def save_meal():
     data = request.get_json()
     date = datetime.strptime(data['date'], '%Y-%m-%d').date()
@@ -148,6 +191,25 @@ def search_meals():
 @app.route('/healthz')
 def health_check():
     return jsonify(status='ok'), 200
+
+@app.before_request
+def check_content_type():
+    if request.method in ['POST', 'PUT']:
+        if request.content_type != 'application/json':
+            return jsonify({"error": "Unsupported content type"}), 415
+        
+@app.after_request
+def log_request(response):
+    logger.info(f"{request.remote_addr} {request.method} {request.path} {response.status_code}")
+    return response 
+
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify(error=str(e)), 404
+
+@app.errorhandler(500)
+def internal_error(e):
+    return jsonify(error="Internal server error"), 500       
 
 if __name__ == '__main__':
     if os.environ.get('FLASK_ENV') == 'development':
