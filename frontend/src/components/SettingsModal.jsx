@@ -4,8 +4,8 @@ import Modal from 'react-modal';
 import { API_BASE_URL } from '../config';
 
 const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
-    const [person1Label, setPerson1Label] = useState(initialLabels.person1);
-    const [person2Label, setPerson2Label] = useState(initialLabels.person2);
+    const [person1Label, setPerson1Label] = useState('');
+    const [person2Label, setPerson2Label] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [versions, setVersions] = useState({
@@ -14,26 +14,41 @@ const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
     });
 
     useEffect(() => {
-        const fetchVersions = async () => {
+        const fetchConfigAndVersions = async () => {
             try {
-                const response = await axios.get(`${API_BASE_URL}/api/version`);
-                setVersions(prev => ({
-                    ...prev,
-                    backend: response.data.backend_version
-                }));
+                setLoading(true);
+                // Fetch current config
+                const configResponse = await axios.get(`${API_BASE_URL}/api/config`);
+                const { person1_label, person2_label } = configResponse.data;
+                
+                setPerson1Label(person1_label || initialLabels.person1);
+                setPerson2Label(person2_label || initialLabels.person2);
+
+                // Fetch versions
+                const versionResponse = await axios.get(`${API_BASE_URL}/api/version`);
+                setVersions({
+                    frontend: import.meta.env.VITE_APP_VERSION,
+                    backend: versionResponse.data.backend_version
+                });
             } catch (error) {
-                console.error('Error fetching versions:', error);
+                console.error('Error fetching data:', error);
+                setError('Failed to load settings');
+                // Fallback to initial labels
+                setPerson1Label(initialLabels.person1);
+                setPerson2Label(initialLabels.person2);
                 setVersions(prev => ({
                     ...prev,
                     backend: 'Unavailable'
                 }));
+            } finally {
+                setLoading(false);
             }
         };
 
         if (isOpen) {
-            fetchVersions();
+            fetchConfigAndVersions();
         }
-    }, [isOpen]);
+    }, [isOpen, initialLabels.person1, initialLabels.person2]);
 
     const handleSubmit = async () => {
         setLoading(true);
@@ -77,9 +92,10 @@ const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
                         Label for Person 1
                     </label>
                     <input
-                        value={person1Label}
+                        value={person1Label || ''}
                         onChange={(e) => setPerson1Label(e.target.value)}
                         className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-hidden"
+                        disabled={loading}
                     />
                 </div>
 
@@ -88,9 +104,10 @@ const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
                         Label for Person 2
                     </label>
                     <input
-                        value={person2Label}
+                        value={person2Label || ''}
                         onChange={(e) => setPerson2Label(e.target.value)}
                         className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-hidden"
+                        disabled={loading}
                     />
                 </div>
             </div>
@@ -99,6 +116,7 @@ const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
                 <button
                     onClick={onClose}
                     className="px-4 py-2 text-gray-600 bg-downy-100 hover:bg-downy-200 rounded-md"
+                    disabled={loading}
                 >
                     Cancel
                 </button>
