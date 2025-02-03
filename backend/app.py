@@ -5,7 +5,10 @@ from datetime import datetime, timedelta
 from flask_migrate import Migrate
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
+
+load_dotenv()
 # Version should be in MAJOR.MINOR.PATCH format (semantic versioning)
 APP_VERSION = "0.1.0"  # Update this with each release
 
