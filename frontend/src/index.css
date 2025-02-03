@@ -1,6 +1,36 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@theme {
+  --color-downy-50: #f2fbfa;
+  --color-downy-100: #d4f3ef;
+  --color-downy-200: #aae5e0;
+  --color-downy-300: #68ccc7;
+  --color-downy-400: #4bb6b4;
+  --color-downy-500: #319b9a;
+  --color-downy-600: #257b7c;
+  --color-downy-700: #216364;
+  --color-downy-800: #1f4e50;
+  --color-downy-900: #1e4143;
+  --color-downy-950: #0c2427;
+}
+
+/*
+  The default border color has changed to `currentColor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+}
 
 .react-datepicker {
   @apply border border-downy-200 rounded-lg shadow-lg;
@@ -32,15 +62,15 @@
 
 /* Add this to your index.css */
 .react-datepicker__triangle {
-  @apply !border-b-downy-200;
+  @apply border-b-downy-200!;
 }
 
 .react-datepicker__triangle::before {
-  @apply !border-b-downy-200;
+  @apply border-b-downy-200!;
 }
 
 .react-datepicker__triangle::after {
-  @apply !border-b-downy-100;
+  @apply border-b-downy-100!;
 }
 
 /* Add transition for smoother hover effects */

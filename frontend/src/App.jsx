@@ -124,7 +124,7 @@ const App = () => {
         )}
 
         {(loading || configLoading) && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
             <Spinner className="w-16 h-16 text-white" />
           </div>
         )}
@@ -155,7 +155,7 @@ const App = () => {
               dateFormat="dd.MM.yyyy"
               locale={de}
               calendarStartDay={1}
-              className="px-4 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none w-40 text-center text-downy-800"
+              className="px-4 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-hidden w-40 text-center text-downy-800"
               showWeekNumbers
               weekLabel="KW"
               placeholderText="Select week"
@@ -170,7 +170,7 @@ const App = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
+        <div className="bg-white rounded-xl shadow-xs overflow-x-auto">
           <table className="w-full min-w-[800px]">
             <thead className="bg-downy-300">
               <tr>
