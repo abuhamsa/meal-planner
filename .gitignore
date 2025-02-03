@@ -1,9 +1,8 @@
 backend/meals.db
-backend/venv/
+backend/.venv/
 backend/__pycache__/
 backend/migrations/__pycache__/
 backend/data/meals.db
-backend/migrations/versions/
 *__pycache__/
 backend/old2ng_migration.py
 backend/.env

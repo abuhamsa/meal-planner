@@ -30,7 +30,7 @@ services:
     networks:
       - meal-network
     environment:
-      - VITE_API_URL=http://192.168.1.147:8000
+      - VITE_API_URL=http://192.168.1.178:8000
     depends_on:
       - backend
 
