@@ -129,7 +129,7 @@ const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValu
       isOpen={true}
       onRequestClose={onClose}
       className="bg-white rounded-lg p-6 max-w-md mx-auto mt-20 shadow-xl border-2 border-downy-100"
-      overlayClassName="fixed inset-0 bg-downy-950/20 backdrop-blur-sm"
+      overlayClassName="fixed inset-0 bg-downy-950/20 backdrop-blur-xs"
     >
       <h2 className="text-xl font-semibold mb-4 text-downy-800">
         {formatDateInGerman(date)} - {mealType.charAt(0).toUpperCase() + mealType.slice(1)}
@@ -149,7 +149,7 @@ const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValu
                 setSearchTerm(e.target.value);
               }}
               onFocus={() => setActiveField('person1')}
-              className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
+              className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-hidden"
               placeholder="Enter meal"
             />
             {activeField === 'person1' && searchResults.length > 0 && (
@@ -185,7 +185,7 @@ const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValu
                 }
               }}
               placeholder="URL (optional)"
-              className={`w-full px-3 py-2 border rounded-md focus:ring-2 outline-none ${person1UrlError ? 'border-red-500 focus:ring-red-300' : 'border-downy-200 focus:ring-downy-300'
+              className={`w-full px-3 py-2 border rounded-md focus:ring-2 outline-hidden ${person1UrlError ? 'border-red-500 focus:ring-red-300' : 'border-downy-200 focus:ring-downy-300'
                 }`}
             />
             {person1UrlError && (
@@ -198,7 +198,7 @@ const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValu
             type="checkbox"
             checked={copyToPerson2}
             onChange={(e) => setCopyToPerson2(e.target.checked)}
-            className="h-4 w-4 text-downy-500 focus:ring-downy-300 rounded border-gray-300"
+            className="h-4 w-4 text-downy-500 focus:ring-downy-300 rounded-sm border-gray-300"
           />
           <span className="text-sm text-downy-700">Same meal for Person 2</span>
         </label>
@@ -216,7 +216,7 @@ const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValu
                 setCopyToPerson2(false); // Uncheck if manual edit
               }}
               onFocus={() => setActiveField('person2')}
-              className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
+              className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-hidden"
               placeholder="Enter meal"
             />
             {activeField === 'person2' && searchResults.length > 0 && (
@@ -254,7 +254,7 @@ const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValu
                 }
               }}
               disabled={copyToPerson2}
-              className={`w-full px-3 py-2 border rounded-md focus:ring-2 outline-none ${person2UrlError ? 'border-red-500 focus:ring-red-300' : 'border-downy-200 focus:ring-downy-300'
+              className={`w-full px-3 py-2 border rounded-md focus:ring-2 outline-hidden ${person2UrlError ? 'border-red-500 focus:ring-red-300' : 'border-downy-200 focus:ring-downy-300'
                 } ${copyToPerson2 ? 'bg-gray-50 cursor-not-allowed' : ''
                 }`}
             />

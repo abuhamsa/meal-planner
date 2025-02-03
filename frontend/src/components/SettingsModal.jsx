@@ -61,7 +61,7 @@ const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
             isOpen={isOpen}
             onRequestClose={onClose}
             className="bg-white rounded-lg p-6 max-w-md mx-auto mt-20 shadow-xl border-2 border-downy-100"
-            overlayClassName="fixed inset-0 bg-downy-950/20 backdrop-blur-sm"
+            overlayClassName="fixed inset-0 bg-downy-950/20 backdrop-blur-xs"
         >
             <h2 className="text-xl font-semibold mb-4 text-downy-800">Settings</h2>
 
@@ -79,7 +79,7 @@ const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
                     <input
                         value={person1Label}
                         onChange={(e) => setPerson1Label(e.target.value)}
-                        className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
+                        className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-hidden"
                     />
                 </div>
 
@@ -90,7 +90,7 @@ const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
                     <input
                         value={person2Label}
                         onChange={(e) => setPerson2Label(e.target.value)}
-                        className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-none"
+                        className="w-full px-3 py-2 border border-downy-200 rounded-md focus:ring-2 focus:ring-downy-300 focus:border-downy-400 outline-hidden"
                     />
                 </div>
             </div>
