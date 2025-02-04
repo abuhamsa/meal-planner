@@ -9,7 +9,7 @@ services:
       - "8000:8000"
     environment:
       - FLASK_ENV=production
-      - CORS_ORIGINS=*  # Add frontend URLs
+      - CORS_ORIGINS=http://localhost:3000
     volumes:
       - ./backend/data:/app/data
     healthcheck:
