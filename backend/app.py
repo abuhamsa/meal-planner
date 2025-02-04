@@ -17,7 +17,7 @@ import time
 
 load_dotenv()
 # Version should be in MAJOR.MINOR.PATCH format (semantic versioning)
-APP_VERSION = "0.1.0"  # Update this with each release
+APP_VERSION = "1.0.0"  # Update this with each release
 
 # Configure basic logging to stdout
 logging.basicConfig(
