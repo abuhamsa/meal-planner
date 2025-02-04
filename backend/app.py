@@ -1,5 +1,6 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request,make_response,abort,current_app
 from flask_sqlalchemy import SQLAlchemy
+from flask_cors import cross_origin
 from flask_cors import CORS
 from datetime import datetime, timedelta
 from flask_migrate import Migrate
@@ -10,8 +11,9 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_expects_json import expects_json
 import logging
-from flask import request
 import sys
+import jwt
+import time
 
 load_dotenv()
 # Version should be in MAJOR.MINOR.PATCH format (semantic versioning)
@@ -28,9 +30,27 @@ logging.basicConfig(
 logger = logging.getLogger()
 
 app = Flask(__name__)
-app.config['CORS_ORIGINS'] = os.environ.get('CORS_ORIGINS', '*').split(',')
+
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable not set")
+TOKEN_EXPIRY_SECONDS =  60
+app.config['CORS_ORIGINS'] = os.environ.get('CORS_ORIGINS').split(',')
+
 # Sett this properly if going public
-CORS(app, resources={r"/api/*": {"origins": app.config['CORS_ORIGINS']}})
+CORS(
+    app,
+    resources={
+        r"/api/*": {
+            "origins": app.config['CORS_ORIGINS'],
+            "allow_headers": ["Authorization", "Content-Type"],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "supports_credentials": True,
+            "max_age": 600
+        }
+    }
+)
+
 # Database configuration
 basedir = Path(__file__).parent.resolve()
 db_dir = basedir / "data"
@@ -89,6 +109,61 @@ meal_schema = {
     "required": ["date", "meal_type"]
 }
 
+# Generate a JWT token
+@app.route("/api/get-token")
+def get_token():
+    payload = {
+        "exp": time.time() + TOKEN_EXPIRY_SECONDS,  # Expiration time
+        "iat": time.time()  # Issued at time
+    }
+    token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+    return jsonify({"token": token})
+
+# Verify token before processing API requests
+def verify_token(token):
+    try:
+        decoded = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        return decoded  # Valid token
+    except jwt.ExpiredSignatureError:
+        return None  # Token expired
+    except jwt.InvalidTokenError:
+        return None  # Invalid token
+
+@app.before_request
+def restrict_access():
+    """Block requests from other origins"""
+    allowed_origins = current_app.config.get('CORS_ORIGINS', [])
+    origin = request.headers.get('Origin')
+
+    if origin not in allowed_origins:
+        abort(403)  # Forbidden
+def handle_options():
+    if request.method == 'OPTIONS':
+        response = make_response()
+        response.headers.add("Access-Control-Allow-Headers", "Authorization, Content-Type")
+        response.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        return response
+def check_token():
+    # Allow OPTIONS requests through without authentication
+    if request.method == 'OPTIONS':
+        return None  # Let Flask-CORS handle the OPTIONS response
+    
+    # Existing token check logic for other methods
+    if request.path == "/api/get-token":
+        return
+
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Missing token"}), 403
+    
+    token = auth_header.split("Bearer ")[1]
+    if not verify_token(token):
+        return jsonify({"error": "Invalid or expired token"}), 403
+
+@app.route("/api/data")
+def get_data():
+    return jsonify({"message": "Secure data access granted!"})
+
 # Add this endpoint
 @app.route('/api/version',methods=['GET'])
 def get_version():
@@ -96,7 +171,7 @@ def get_version():
         'backend_version': APP_VERSION
     })
 
-@app.route('/api/config', methods=['GET'])
+@app.route('/api/config', methods=['GET','OPTIONS'])
 def get_config():
     config = {
         'person1_label': 'Person 1',
@@ -209,7 +284,7 @@ def not_found(e):
 
 @app.errorhandler(500)
 def internal_error(e):
-    return jsonify(error="Internal server error"), 500       
+    return jsonify(error="Internal server error"), 500   
 
 if __name__ == '__main__':
     if os.environ.get('FLASK_ENV') == 'development':
