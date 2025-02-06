@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import axios from 'axios';
 import Modal from 'react-modal';
 import { startOfWeek, addDays } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { jwtDecode } from 'jwt-decode';
 import {
   formatDateInGerman,
   formatDateAPI,
@@ -21,8 +20,6 @@ import { API_BASE_URL } from './config';
 
 Modal.setAppElement('#root');
 
-// Create a separate axios instance for authenticated requests
-const authAxios = axios.create();
 
 const App = () => {
   const [startDate, setStartDate] = useState(startOfWeek(new Date(), weekConfig));
@@ -33,57 +30,7 @@ const App = () => {
   const [personLabels, setPersonLabels] = useState({ person1: 'Person 1', person2: 'Person 2' });
   const [showSettings, setShowSettings] = useState(false);
   const [configLoading, setConfigLoading] = useState(true);
-  const tokenRef = useRef({ token: null, expiry: 0 });
-
-  useEffect(() => {
-    // Add request interceptor for authAxios
-    const interceptor = authAxios.interceptors.request.use(async (config) => {
-      // Skip for token endpoint
-      if (config.url?.endsWith('/api/get-token')) {
-        return config;
-      }
-    
-      // Check valid token exists
-      if (tokenRef.current.token && Date.now() < tokenRef.current.expiry * 1000) {
-        config.headers.Authorization = `Bearer ${tokenRef.current.token}`;
-        return config;
-      }
-    
-      try {
-        // Fetch new token
-        const tokenResponse = await axios.get(`${API_BASE_URL}/api/get-token`);
-        const newToken = tokenResponse.data.token;
-        const decoded = jwtDecode(newToken);
-    
-        // Update token reference
-        tokenRef.current = {
-          token: newToken,
-          expiry: decoded.exp
-        };
-    
-        // Add to headers
-        config.headers = config.headers || {};
-        config.headers.Authorization = `Bearer ${newToken}`;
-        console.log('Request headers:', config.headers);
-        console.debug('New token acquired and header set');
-        
-      } catch (error) {
-        console.error('Token fetch error:', error);
-        if (error.response) {
-          console.error('Server response:', error.response.status, error.response.data);
-        }
-        return Promise.reject(error);
-      }
-    
-      return config;
-    });
-
-    return () => {
-      // Cleanup interceptor on unmount
-      authAxios.interceptors.request.eject(interceptor);
-    };
-  }, []);
-
+  
   const handleCurrentWeek = () => {
     const currentWeekStart = startOfWeek(new Date(), weekConfig);
     setStartDate(currentWeekStart);
@@ -103,7 +50,7 @@ const App = () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await authAxios.get(`${API_BASE_URL}/api/meals/week`, {
+        const response = await axios.get(`${API_BASE_URL}/api/meals/week`, {
           params: { start_date: formatDateAPI(startDate) }
         });
         setMeals(response.data);
@@ -116,7 +63,7 @@ const App = () => {
 
     const fetchConfig = async () => {
       try {
-        const response = await authAxios.get(`${API_BASE_URL}/api/config`);
+        const response = await axios.get(`${API_BASE_URL}/api/config`);
         setPersonLabels({
           person1: response.data.person1_label,
           person2: response.data.person2_label
@@ -145,8 +92,8 @@ const App = () => {
     setLoading(true);
     setError(null);
     try {
-      await authAxios.post(`${API_BASE_URL}/api/meals`, mealData);
-      const response = await authAxios.get(`${API_BASE_URL}/api/meals/week`, {
+      await axios.post(`${API_BASE_URL}/api/meals`, mealData);
+      const response = await axios.get(`${API_BASE_URL}/api/meals/week`, {
         params: { start_date: formatDateAPI(startDate) }
       });
       setMeals(response.data);
