@@ -6,3 +6,4 @@ backend/data/meals.db
 *__pycache__/
 backend/old2ng_migration.py
 backend/.env
+docker-compose-pf.yaml
