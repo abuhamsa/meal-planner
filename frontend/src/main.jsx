@@ -9,10 +9,10 @@ import "./index.css";
 const oidcConfig = {
   authority: "https://auth.abuhamsa.ch/application/o/mealplannerdev/", // Replace with your Authentik URL
   client_id: "iIiiYk7zOD3KQGXbPj8Ux4FUOGEr6rHuTUnquJww",
-  redirect_uri: "http://localhost:5173/callback", // Match with Authentik's allowed redirect URIs
+  redirect_uri: "http://127.0.0.1:5173/callback", // Match with Authentik's allowed redirect URIs
   scope: "openid profile email",
   response_type: "code",
-  post_logout_redirect_uri: "http://localhost:5173/",
+  post_logout_redirect_uri: "http://127.0.0.1:5173/",
 };
 
 ReactDOM.createRoot(document.getElementById("root")).render(
