@@ -1,9 +1,11 @@
-from flask import Flask, jsonify, request,make_response,abort,current_app
+from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
-from flask_cors import cross_origin
 from flask_cors import CORS
 from datetime import datetime, timedelta
 from flask_migrate import Migrate
+from authlib.jose import JsonWebToken
+from functools import wraps
+import requests
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -12,12 +14,14 @@ from flask_limiter.util import get_remote_address
 from flask_expects_json import expects_json
 import logging
 import sys
-import jwt
-import time
 
 load_dotenv()
 # Version should be in MAJOR.MINOR.PATCH format (semantic versioning)
 APP_VERSION = "1.0.0"  # Update this with each release
+
+OIDC_ISSUER = os.getenv('OIDC_ISSUER')
+OIDC_CLIENT_ID = os.getenv('OIDC_CLIENT_ID')
+
 
 # Configure basic logging to stdout
 logging.basicConfig(
@@ -30,26 +34,15 @@ logging.basicConfig(
 logger = logging.getLogger()
 
 app = Flask(__name__)
-
-SECRET_KEY = os.environ.get("SECRET_KEY")
-if not SECRET_KEY:
-    raise ValueError("SECRET_KEY environment variable not set")
-TOKEN_EXPIRY_SECONDS =  60
 app.config['CORS_ORIGINS'] = os.environ.get('CORS_ORIGINS').split(',')
 
 # Sett this properly if going public
-CORS(
-    app,
-    resources={
-        r"/api/*": {
-            "origins": app.config['CORS_ORIGINS'],
-            "allow_headers": ["Authorization", "Content-Type"],
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "supports_credentials": True,
-            "max_age": 600
-        }
+CORS(app, resources={
+    r"/api/*": {
+        "origins": os.environ.get('CORS_ORIGINS').split(','),
+        "supports_credentials": True
     }
-)
+})
 
 # Database configuration
 basedir = Path(__file__).parent.resolve()
@@ -109,69 +102,66 @@ meal_schema = {
     "required": ["date", "meal_type"]
 }
 
-# Generate a JWT token
-@app.route("/api/get-token")
-def get_token():
-    payload = {
-        "exp": time.time() + TOKEN_EXPIRY_SECONDS,  # Expiration time
-        "iat": time.time()  # Issued at time
-    }
-    token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
-    return jsonify({"token": token})
 
-# Verify token before processing API requests
+# Fetch OpenID Connect configuration
+def get_oidc_config():
+    response = requests.get(f"{OIDC_ISSUER}/.well-known/openid-configuration")
+    response.raise_for_status()
+    return response.json()
+
+OIDC_CONFIG = get_oidc_config()
+JWKS_URI = OIDC_CONFIG["jwks_uri"]
+
+# Fetch and cache the JWKS
+def get_jwks():
+    response = requests.get(JWKS_URI)
+    response.raise_for_status()
+    return response.json()
+
+JWKS = get_jwks()
+jwt_decoder = JsonWebToken(["RS256"])  # Supports RS256 algorithm
+
 def verify_token(token):
     try:
-        decoded = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        return decoded  # Valid token
-    except jwt.ExpiredSignatureError:
-        return None  # Token expired
-    except jwt.InvalidTokenError:
-        return None  # Invalid token
+        # Decode token using JWKS
+        claims = jwt_decoder.decode(token, key=JWKS, claims_options={
+            "iss": {"essential": True, "value": OIDC_ISSUER},
+            "aud": {"essential": True, "value": OIDC_CLIENT_ID},
+            "exp": {"essential": True}
+        })
+        claims.validate()  # Ensure token is not expired
+        return claims
+    except Exception as e:
+        return None
 
-@app.before_request
-def restrict_access():
-    """Block requests from other origins"""
-    allowed_origins = current_app.config.get('CORS_ORIGINS', [])
-    origin = request.headers.get('Origin')
+def require_auth(f):
+    @wraps(f)  # This ensures Flask keeps the correct function name
+    def decorated(*args, **kwargs):
+        auth_header = request.headers.get("Authorization", None)
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return jsonify({"error": "Missing or invalid token"}), 401
 
-    if origin not in allowed_origins:
-        abort(403)  # Forbidden
-def handle_options():
-    if request.method == 'OPTIONS':
-        response = make_response()
-        response.headers.add("Access-Control-Allow-Headers", "Authorization, Content-Type")
-        response.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        return response
-def check_token():
-    # Allow OPTIONS requests through without authentication
-    if request.method == 'OPTIONS':
-        return None  # Let Flask-CORS handle the OPTIONS response
-    
-    # Existing token check logic for other methods
-    if request.path == "/api/get-token":
-        return
+        token = auth_header.split(" ")[1]
+        claims = verify_token(token)
+        if not claims:
+            return jsonify({"error": "Invalid or expired token"}), 401
 
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        return jsonify({"error": "Missing token"}), 403
-    
-    token = auth_header.split("Bearer ")[1]
-    if not verify_token(token):
-        return jsonify({"error": "Invalid or expired token"}), 403
+        request.user = claims  # Attach user claims to request
+        return f(*args, **kwargs)
 
-@app.route("/api/data")
-def get_data():
-    return jsonify({"message": "Secure data access granted!"})
+    return decorated
+
 
 # Add this endpoint
 @app.route('/api/version',methods=['GET'])
+@require_auth
 def get_version():
     return jsonify({
         'backend_version': APP_VERSION
     })
 
-@app.route('/api/config', methods=['GET','OPTIONS'])
+@app.route('/api/config', methods=['GET'])
+@require_auth
 def get_config():
     config = {
         'person1_label': 'Person 1',
@@ -187,6 +177,7 @@ def get_config():
     return jsonify(config)
 
 @app.route('/api/config', methods=['POST'])
+@require_auth
 def update_config():
     data = request.get_json()
     
@@ -209,6 +200,7 @@ def validate_date(date_str):
         return False
 
 @app.route('/api/meals/week', methods=['GET'])
+@require_auth
 def get_week_meals():
     date_str = request.args.get('start_date')
     if not validate_date(date_str):
@@ -223,6 +215,7 @@ def get_week_meals():
 
 @app.route('/api/meals', methods=['POST'])
 @expects_json(meal_schema)
+@require_auth
 def save_meal():
     data = request.get_json()
     date = datetime.strptime(data['date'], '%Y-%m-%d').date()
@@ -244,6 +237,7 @@ def save_meal():
     return jsonify({'status': 'success'})
 
 @app.route('/api/meals/search')
+@require_auth
 def search_meals():
     search_term = request.args.get('q', '')
     results = Meal.query.filter(
