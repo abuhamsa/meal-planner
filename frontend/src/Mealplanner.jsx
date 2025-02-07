@@ -18,11 +18,14 @@ import IconLink from './components/IconLink';
 import GearIcon from './components/GearIcon';
 import { API_BASE_URL } from './config';
 import { useAuth } from "react-oidc-context";
+import LogoutButton from "./components/LogoutButton";
 
 Modal.setAppElement('#root');
 
 
 const Mealplanner = () => {
+
+
   const [startDate, setStartDate] = useState(startOfWeek(new Date(), weekConfig));
   const [meals, setMeals] = useState([]);
   const [editing, setEditing] = useState(null);
@@ -32,6 +35,32 @@ const Mealplanner = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [configLoading, setConfigLoading] = useState(true);
   const auth = useAuth();
+
+  // Add at the top of Mealplanner component
+  useEffect(() => {
+    const handleAuthError = (error) => {
+      if (error.message.includes("login_required")) {
+        auth.signinRedirect();
+      }
+    };
+
+    auth.events.addAccessTokenExpired(handleAuthError);
+    return () => auth.events.removeAccessTokenExpired(handleAuthError);
+  }, [auth]);
+
+  useEffect(() => {
+    const handleTokenExpiration = () => {
+      if (!auth.isLoading && auth.user?.expired) {
+        auth.signinSilent().catch(() => {
+          auth.signinRedirect();
+        });
+      }
+    };
+
+    // Check every 30 seconds
+    const interval = setInterval(handleTokenExpiration, 30000);
+    return () => clearInterval(interval);
+  }, [auth]);
 
   const handleCurrentWeek = () => {
     const currentWeekStart = startOfWeek(new Date(), weekConfig);
@@ -121,22 +150,22 @@ const Mealplanner = () => {
       setLoading(false);
     }
     setLoading(true);
-      setError(null);
-      try {
-        const token = auth.user?.access_token;
-        const response = await axios.get(`${API_BASE_URL}/api/meals/week`, {
-          params: { start_date: formatDateAPI(startDate) },
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        setMeals(response.data);
-      } catch (err) {
-        setError('Error loading meals. Please try again.');
-        console.error('Error loading config:', err);
-      } finally {
-        setLoading(false);
-      }
+    setError(null);
+    try {
+      const token = auth.user?.access_token;
+      const response = await axios.get(`${API_BASE_URL}/api/meals/week`, {
+        params: { start_date: formatDateAPI(startDate) },
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setMeals(response.data);
+    } catch (err) {
+      setError('Error loading meals. Please try again.');
+      console.error('Error loading config:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSaveSettings = (newLabels) => {
@@ -275,7 +304,8 @@ const Mealplanner = () => {
           />
         )}
       </div>
-      <div className="fixed bottom-4 right-4">
+      <div className="fixed bottom-4 right-4 flex gap-4 items-center">
+        <LogoutButton />
         <button
           onClick={() => setShowSettings(true)}
           className="p-3 bg-downy-100 hover:bg-downy-200 rounded-full shadow-lg"

@@ -10,11 +10,14 @@ const oidcConfig = {
   authority: "https://auth.abuhamsa.ch/application/o/mealplannerdev/", // Replace with your Authentik URL
   client_id: "iIiiYk7zOD3KQGXbPj8Ux4FUOGEr6rHuTUnquJww",
   redirect_uri: "http://127.0.0.1:5173/callback", // Match with Authentik's allowed redirect URIs
-  scope: "openid profile email",
+  scope: "openid profile email offline_access",
   response_type: "code",
   post_logout_redirect_uri: "http://127.0.0.1:5173/",
-  silent_redirect_uri: "http://127.0.0.1:5173/silent-refresh", // 🔹 Needed for silent authentication
-  automaticSilentRenew: true, // 🔹 Automatically renew session if valid
+  automaticSilentRenew: true,
+  monitorSession: true,
+  checkSessionInterval: 3000, // Check session every 3 seconds
+  revokeAccessTokenOnSignout: true,
+  refreshTokenExpiringNotificationTime: 60, // 60 seconds before expiration
 
 };
 
