@@ -1,18 +1,23 @@
-import { useAuth } from "react-oidc-context";
+import { useAuth } from 'react-oidc-context';
+import LogoutIcon from './LogoutIcon';
 
 const LogoutButton = () => {
-  const auth = useAuth();
+  const { signoutRedirect, removeUser } = useAuth();
 
   const handleLogout = () => {
-    auth.signoutRedirect();
+    // Clear local session storage
+    removeUser();
+    // Initiate OIDC logout
+    signoutRedirect();
   };
 
   return (
     <button
       onClick={handleLogout}
-      className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-    >
-      Logout
+      className="p-3 bg-downy-100 hover:bg-downy-200 rounded-full shadow-lg"
+          aria-label="Settings"
+        >
+      <LogoutIcon />
     </button>
   );
 };

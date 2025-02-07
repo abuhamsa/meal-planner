@@ -1,15 +1,13 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import Modal from 'react-modal';
 import { API_BASE_URL } from '../config';
-import { useAuth } from "react-oidc-context";
+import api from "../api/axios";
 
 const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
     const [person1Label, setPerson1Label] = useState('');
     const [person2Label, setPerson2Label] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const auth = useAuth();
     const [versions, setVersions] = useState({
         frontend: import.meta.env.VITE_APP_VERSION,
         backend: 'Loading...'
@@ -20,23 +18,14 @@ const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
             try {
                 setLoading(true);
                 // Fetch current config
-                const token = auth.user?.access_token;
-                const configResponse = await axios.get(`${API_BASE_URL}/api/config`,{
-                    headers: {
-                      Authorization: `Bearer ${token}`
-                    }
-                  });
+                const configResponse = await api.get(`${API_BASE_URL}/api/config`);
                 const { person1_label, person2_label } = configResponse.data;
                 
                 setPerson1Label(person1_label || initialLabels.person1);
                 setPerson2Label(person2_label || initialLabels.person2);
 
                 // Fetch versions
-                const versionResponse = await axios.get(`${API_BASE_URL}/api/version`,{
-                    headers: {
-                      Authorization: `Bearer ${token}`
-                    }
-                  });
+                const versionResponse = await api.get(`${API_BASE_URL}/api/version`);
                 setVersions({
                     frontend: import.meta.env.VITE_APP_VERSION,
                     backend: versionResponse.data.backend_version
@@ -66,8 +55,7 @@ const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
         setError(null);
 
         try {
-            const token = auth.user?.access_token;
-            await axios.post(
+            await api.post(
                 `${API_BASE_URL}/api/config`,
                 {
                     person1_label: person1Label,
@@ -75,7 +63,6 @@ const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
                 },
                 {
                     headers: {
-                        Authorization: `Bearer ${token}`,
                         "Content-Type": "application/json" // Optional but recommended
                     }
                 }
