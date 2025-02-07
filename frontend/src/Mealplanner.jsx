@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import axios from 'axios';
 import Modal from 'react-modal';
 import { startOfWeek, addDays } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -17,12 +16,15 @@ import SettingsModal from './components/SettingsModal';
 import IconLink from './components/IconLink';
 import GearIcon from './components/GearIcon';
 import { API_BASE_URL } from './config';
-import { useAuth } from "react-oidc-context";
+import LogoutButton from "./components/LogoutButton";
+import api from "./api/axios";
 
 Modal.setAppElement('#root');
 
 
 const Mealplanner = () => {
+
+
   const [startDate, setStartDate] = useState(startOfWeek(new Date(), weekConfig));
   const [meals, setMeals] = useState([]);
   const [editing, setEditing] = useState(null);
@@ -31,7 +33,8 @@ const Mealplanner = () => {
   const [personLabels, setPersonLabels] = useState({ person1: 'Person 1', person2: 'Person 2' });
   const [showSettings, setShowSettings] = useState(false);
   const [configLoading, setConfigLoading] = useState(true);
-  const auth = useAuth();
+
+ 
 
   const handleCurrentWeek = () => {
     const currentWeekStart = startOfWeek(new Date(), weekConfig);
@@ -52,12 +55,8 @@ const Mealplanner = () => {
       setLoading(true);
       setError(null);
       try {
-        const token = auth.user?.access_token;
-        const response = await axios.get(`${API_BASE_URL}/api/meals/week`, {
-          params: { start_date: formatDateAPI(startDate) },
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
+        const response = await api.get(`${API_BASE_URL}/api/meals/week`, {
+          params: { start_date: formatDateAPI(startDate) }
         });
         setMeals(response.data);
       } catch (err) {
@@ -70,12 +69,7 @@ const Mealplanner = () => {
 
     const fetchConfig = async () => {
       try {
-        const token = auth.user?.access_token;
-        const response = await axios.get(`${API_BASE_URL}/api/config`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
+        const response = await api.get(`${API_BASE_URL}/api/config`);
         setPersonLabels({
           person1: response.data.person1_label,
           person2: response.data.person2_label
@@ -104,16 +98,9 @@ const Mealplanner = () => {
     setLoading(true);
     setError(null);
     try {
-      const token = auth.user?.access_token;
-      await axios.post(
+      await api.post(
         `${API_BASE_URL}/api/meals`,
-        mealData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json" // Recommended for JSON data
-          }
-        }
+        mealData
       );
     } catch (err) {
       setError('Error saving meal. Please try again.');
@@ -121,22 +108,18 @@ const Mealplanner = () => {
       setLoading(false);
     }
     setLoading(true);
-      setError(null);
-      try {
-        const token = auth.user?.access_token;
-        const response = await axios.get(`${API_BASE_URL}/api/meals/week`, {
-          params: { start_date: formatDateAPI(startDate) },
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        setMeals(response.data);
-      } catch (err) {
-        setError('Error loading meals. Please try again.');
-        console.error('Error loading config:', err);
-      } finally {
-        setLoading(false);
-      }
+    setError(null);
+    try {
+      const response = await api.get(`${API_BASE_URL}/api/meals/week`, {
+        params: { start_date: formatDateAPI(startDate) }
+      });
+      setMeals(response.data);
+    } catch (err) {
+      setError('Error loading meals. Please try again.');
+      console.error('Error loading config:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSaveSettings = (newLabels) => {
@@ -275,7 +258,10 @@ const Mealplanner = () => {
           />
         )}
       </div>
-      <div className="fixed bottom-4 right-4">
+      <div className="fixed bottom-4 right-4 flex gap-4 items-center">
+      
+
+        <LogoutButton />
         <button
           onClick={() => setShowSettings(true)}
           className="p-3 bg-downy-100 hover:bg-downy-200 rounded-full shadow-lg"

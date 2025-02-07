@@ -1,26 +1,28 @@
 import { useEffect } from "react";
 import { useAuth } from "react-oidc-context";
-import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import Spinner from "../components/Spinner";
 
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, isLoading, signinRedirect } = useAuth();
-  const navigate = useNavigate();
+  const { isLoading, isAuthenticated, signinSilent } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      // Try to log in automatically if a valid session exists
-      
-        navigate("/login"); // Redirect to login if no session
-      
+      // Attempt silent login if session exists
+      signinSilent().catch(() => {
+        // Fallback to regular login if silent renew fails
+        window.location = '/login';
+      });
     }
-  }, [isAuthenticated, isLoading, signinRedirect, navigate]);
+  }, [isLoading, isAuthenticated, signinSilent]);
 
-  if (isLoading) return <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-  <Spinner className="w-16 h-16 text-white" />
-</div>;
+  if (isLoading) {
+    return <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+    <Spinner className="w-16 h-16 text-white" />
+  </div>;
+  }
 
-  return isAuthenticated ? children : null;
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
 export default ProtectedRoute;

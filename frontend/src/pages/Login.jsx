@@ -1,19 +1,15 @@
-import { useEffect } from "react";
-import { useAuth } from "react-oidc-context"; // ✅ Correct import
-import { useNavigate } from "react-router-dom";
-
+// src/pages/Login.jsx
+import { useAuth } from 'react-oidc-context';
+import { Navigate } from 'react-router-dom';
+import Spinner from '../components/Spinner';
 
 const Login = () => {
-  const { user, signinRedirect, isLoading } = useAuth(); // ✅ Use signinRedirect instead of login
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (user) navigate("/");
-  }, [user, navigate]);
+  const { isAuthenticated, isLoading, signinRedirect } = useAuth();
 
   if (isLoading) return <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-    <Spinner className="w-16 h-16 text-white" />
-  </div>;;
+  <Spinner className="w-16 h-16 text-white" />
+</div>;
+  if (isAuthenticated) return <Navigate to="/" replace />;
 
   return (
     <div className="min-h-screen bg-downy-50 flex items-center justify-center p-4">

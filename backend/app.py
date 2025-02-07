@@ -86,7 +86,7 @@ class Config(db.Model):
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
+    default_limits=["2000000 per day", "500000 per hour"]
 )
 
 meal_schema = {

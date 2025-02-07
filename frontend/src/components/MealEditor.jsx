@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
 import Modal from 'react-modal';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { isValidUrl, formatDateInGerman } from '../utils/helpers';
 import { API_BASE_URL } from '../config';
-import { useAuth } from "react-oidc-context";
+import api from "../api/axios";
 
 
 const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValues }) => {
@@ -22,7 +21,6 @@ const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValu
   const dropdownRef = useRef(null);
   const person1InputRef = useRef(null);
   const person2InputRef = useRef(null);
-  const auth = useAuth();
 
   const validateUrls = () => {
     let isValid = true;
@@ -79,12 +77,8 @@ const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValu
     const delayDebounce = setTimeout(async () => {
       if (searchTerm.length > 2) {
         try {
-          const token = auth.user?.access_token;
-          const response = await axios.get(`${API_BASE_URL}/api/meals/search`, {
-            params: { q: searchTerm },
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
+          const response = await api.get(`${API_BASE_URL}/api/meals/search`, {
+            params: { q: searchTerm }
           });
           const uniqueMeals = response.data.reduce((acc, meal) => {
             if (!acc.some(m => m.name.toLowerCase() === meal.name.toLowerCase())) {
