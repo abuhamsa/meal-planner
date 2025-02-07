@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { isValidUrl, formatDateInGerman } from '../utils/helpers';
 import { API_BASE_URL } from '../config';
+import { useAuth } from "react-oidc-context";
 
 
 const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValues }) => {
@@ -21,6 +22,7 @@ const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValu
   const dropdownRef = useRef(null);
   const person1InputRef = useRef(null);
   const person2InputRef = useRef(null);
+  const auth = useAuth();
 
   const validateUrls = () => {
     let isValid = true;
@@ -77,8 +79,12 @@ const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValu
     const delayDebounce = setTimeout(async () => {
       if (searchTerm.length > 2) {
         try {
+          const token = auth.user?.access_token;
           const response = await axios.get(`${API_BASE_URL}/api/meals/search`, {
-            params: { q: searchTerm }
+            params: { q: searchTerm },
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
           });
           const uniqueMeals = response.data.reduce((acc, meal) => {
             if (!acc.some(m => m.name.toLowerCase() === meal.name.toLowerCase())) {
@@ -253,6 +259,7 @@ const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValu
                   setPerson2UrlError('Invalid URL format');
                 }
               }}
+              placeholder="URL (optional)"
               disabled={copyToPerson2}
               className={`w-full px-3 py-2 border rounded-md focus:ring-2 outline-hidden ${person2UrlError ? 'border-red-500 focus:ring-red-300' : 'border-downy-200 focus:ring-downy-300'
                 } ${copyToPerson2 ? 'bg-gray-50 cursor-not-allowed' : ''

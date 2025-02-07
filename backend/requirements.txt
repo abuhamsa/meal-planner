@@ -7,3 +7,5 @@ gunicorn==23.0.0
 flask_expects_json
 flask_limiter
 pyjwt
+authlib 
+requests

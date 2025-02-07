@@ -13,6 +13,9 @@ const oidcConfig = {
   scope: "openid profile email",
   response_type: "code",
   post_logout_redirect_uri: "http://127.0.0.1:5173/",
+  silent_redirect_uri: "http://127.0.0.1:5173/silent-refresh", // 🔹 Needed for silent authentication
+  automaticSilentRenew: true, // 🔹 Automatically renew session if valid
+
 };
 
 ReactDOM.createRoot(document.getElementById("root")).render(

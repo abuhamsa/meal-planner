@@ -17,6 +17,7 @@ import SettingsModal from './components/SettingsModal';
 import IconLink from './components/IconLink';
 import GearIcon from './components/GearIcon';
 import { API_BASE_URL } from './config';
+import { useAuth } from "react-oidc-context";
 
 Modal.setAppElement('#root');
 
@@ -30,6 +31,7 @@ const Mealplanner = () => {
   const [personLabels, setPersonLabels] = useState({ person1: 'Person 1', person2: 'Person 2' });
   const [showSettings, setShowSettings] = useState(false);
   const [configLoading, setConfigLoading] = useState(true);
+  const auth = useAuth();
 
   const handleCurrentWeek = () => {
     const currentWeekStart = startOfWeek(new Date(), weekConfig);
@@ -50,12 +52,17 @@ const Mealplanner = () => {
       setLoading(true);
       setError(null);
       try {
+        const token = auth.user?.access_token;
         const response = await axios.get(`${API_BASE_URL}/api/meals/week`, {
-          params: { start_date: formatDateAPI(startDate) }
+          params: { start_date: formatDateAPI(startDate) },
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         });
         setMeals(response.data);
       } catch (err) {
         setError('Error loading meals. Please try again.');
+        console.error('Error loading config:', err);
       } finally {
         setLoading(false);
       }
@@ -63,7 +70,12 @@ const Mealplanner = () => {
 
     const fetchConfig = async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/config`);
+        const token = auth.user?.access_token;
+        const response = await axios.get(`${API_BASE_URL}/api/config`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
         setPersonLabels({
           person1: response.data.person1_label,
           person2: response.data.person2_label
@@ -92,16 +104,39 @@ const Mealplanner = () => {
     setLoading(true);
     setError(null);
     try {
-      await axios.post(`${API_BASE_URL}/api/meals`, mealData);
-      const response = await axios.get(`${API_BASE_URL}/api/meals/week`, {
-        params: { start_date: formatDateAPI(startDate) }
-      });
-      setMeals(response.data);
+      const token = auth.user?.access_token;
+      await axios.post(
+        `${API_BASE_URL}/api/meals`,
+        mealData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json" // Recommended for JSON data
+          }
+        }
+      );
     } catch (err) {
       setError('Error saving meal. Please try again.');
     } finally {
       setLoading(false);
     }
+    setLoading(true);
+      setError(null);
+      try {
+        const token = auth.user?.access_token;
+        const response = await axios.get(`${API_BASE_URL}/api/meals/week`, {
+          params: { start_date: formatDateAPI(startDate) },
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        setMeals(response.data);
+      } catch (err) {
+        setError('Error loading meals. Please try again.');
+        console.error('Error loading config:', err);
+      } finally {
+        setLoading(false);
+      }
   };
 
   const handleSaveSettings = (newLabels) => {
