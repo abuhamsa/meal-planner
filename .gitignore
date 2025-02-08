@@ -8,3 +8,5 @@ backend/old2ng_migration.py
 backend/.env
 docker-compose-pf.yaml
 backend/.venv*
+frontend/localhost+1.pem
+frontend/localhost+1-key.pem

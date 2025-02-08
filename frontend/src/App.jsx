@@ -3,6 +3,7 @@ import ProtectedRoute from "./auth/ProtectedRoute";
 import Login from "./pages/Login";
 import Mealplanner from "./Mealplanner"; // Your main app component
 import Callback from "./Callback";
+//import SilentRenew from "./auth/SilentRenew";
 
 const App = () => {
   return (
