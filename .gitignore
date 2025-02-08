@@ -7,3 +7,4 @@ backend/data/meals.db
 backend/old2ng_migration.py
 backend/.env
 docker-compose-pf.yaml
+backend/.venv*

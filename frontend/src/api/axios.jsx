@@ -21,7 +21,7 @@ api.interceptors.request.use(config => {
   return config;
 });
 
-api.interceptors.response.use(
+/* api.interceptors.response.use(
   response => response,
   error => {
     if (error.response?.status === 401) {
@@ -30,6 +30,6 @@ api.interceptors.response.use(
     }
     return Promise.reject(error);
   }
-);
+); */
 
 export default api;
