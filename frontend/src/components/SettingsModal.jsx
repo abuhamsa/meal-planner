@@ -1,15 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect,useContext  } from 'react';
 import Modal from 'react-modal';
-import { API_BASE_URL } from '../config';
 import api from "../api/axios";
+import { ConfigContext } from '../contexts/ConfigContext';
 
 const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
     const [person1Label, setPerson1Label] = useState('');
     const [person2Label, setPerson2Label] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const config = useContext(ConfigContext);
     const [versions, setVersions] = useState({
-        frontend: import.meta.env.VITE_APP_VERSION,
+        frontend: config.APP_VERSION,
         backend: 'Loading...'
     });
 
@@ -18,16 +19,16 @@ const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
             try {
                 setLoading(true);
                 // Fetch current config
-                const configResponse = await api.get(`${API_BASE_URL}/api/config`);
+                const configResponse = await api.get(`/api/config`);
                 const { person1_label, person2_label } = configResponse.data;
                 
                 setPerson1Label(person1_label || initialLabels.person1);
                 setPerson2Label(person2_label || initialLabels.person2);
 
                 // Fetch versions
-                const versionResponse = await api.get(`${API_BASE_URL}/api/version`);
+                const versionResponse = await api.get(`/api/version`);
                 setVersions({
-                    frontend: import.meta.env.VITE_APP_VERSION,
+                    frontend: config.APP_VERSION,
                     backend: versionResponse.data.backend_version
                 });
             } catch (error) {
@@ -56,7 +57,7 @@ const SettingsModal = ({ isOpen, onClose, initialLabels, onSave }) => {
 
         try {
             await api.post(
-                `${API_BASE_URL}/api/config`,
+                `/api/config`,
                 {
                     person1_label: person1Label,
                     person2_label: person2Label

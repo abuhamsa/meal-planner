@@ -15,7 +15,6 @@ import MealEditor from './components/MealEditor';
 import SettingsModal from './components/SettingsModal';
 import IconLink from './components/IconLink';
 import GearIcon from './components/GearIcon';
-import { API_BASE_URL } from './config';
 import LogoutButton from "./components/LogoutButton";
 import api from "./api/axios";
 
@@ -55,7 +54,7 @@ const Mealplanner = () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await api.get(`${API_BASE_URL}/api/meals/week`, {
+        const response = await api.get(`/api/meals/week`, {
           params: { start_date: formatDateAPI(startDate) }
         });
         setMeals(response.data);
@@ -69,7 +68,7 @@ const Mealplanner = () => {
 
     const fetchConfig = async () => {
       try {
-        const response = await api.get(`${API_BASE_URL}/api/config`);
+        const response = await api.get(`/api/config`);
         setPersonLabels({
           person1: response.data.person1_label,
           person2: response.data.person2_label
@@ -99,7 +98,7 @@ const Mealplanner = () => {
     setError(null);
     try {
       await api.post(
-        `${API_BASE_URL}/api/meals`,
+        `/api/meals`,
         mealData
       );
     } catch (err) {
@@ -110,7 +109,7 @@ const Mealplanner = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get(`${API_BASE_URL}/api/meals/week`, {
+      const response = await api.get(`/api/meals/week`, {
         params: { start_date: formatDateAPI(startDate) }
       });
       setMeals(response.data);

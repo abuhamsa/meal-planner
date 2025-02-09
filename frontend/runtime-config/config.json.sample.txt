@@ -1,0 +1,10 @@
+{
+    "OIDC_AUTHORITY": "",
+    "OIDC_CLIENT_ID": "",
+    "OIDC_REDIRECT_URI": "",
+    "OIDC_POST_LOGOUT_URI": "",
+    "OIDC_SILENT_REDIRECT_URI": "",
+    "API_BASE_URL": "",
+    "APP_VERSION": ""
+
+}

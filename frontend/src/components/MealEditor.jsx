@@ -3,7 +3,6 @@ import Modal from 'react-modal';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { isValidUrl, formatDateInGerman } from '../utils/helpers';
-import { API_BASE_URL } from '../config';
 import api from "../api/axios";
 
 
@@ -77,7 +76,7 @@ const MealEditor = ({ personLabels, date, mealType, onClose, onSave, initialValu
     const delayDebounce = setTimeout(async () => {
       if (searchTerm.length > 2) {
         try {
-          const response = await api.get(`${API_BASE_URL}/api/meals/search`, {
+          const response = await api.get(`/api/meals/search`, {
             params: { q: searchTerm }
           });
           const uniqueMeals = response.data.reduce((acc, meal) => {

@@ -1,35 +1,30 @@
+// api/axios.js
 import axios from 'axios';
 
-const OIDC_STORAGE_KEY = `oidc.user:${import.meta.env.VITE_OIDC_AUTHORITY}:${import.meta.env.VITE_OIDC_CLIENT_ID}`;
-
+// Initialize without config (will be configured later)
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
-  withCredentials: true // For potential future cookie integration
+  withCredentials: true
 });
 
-api.interceptors.request.use(config => {
-  const oidcData = localStorage.getItem(OIDC_STORAGE_KEY);
+// Export a function to configure the instance
+export const configureApi = (config) => {
+  api.defaults.baseURL = config.API_BASE_URL;
   
-  if (oidcData) {
-    try {
-      const { access_token } = JSON.parse(oidcData);
-      config.headers.Authorization = `Bearer ${access_token}`;
-    } catch (error) {
-      console.error('Error parsing OIDC data:', error);
+  // Add request interceptor
+  api.interceptors.request.use(requestConfig => {
+    const OIDC_STORAGE_KEY = `oidc.user:${config.OIDC_AUTHORITY}:${config.OIDC_CLIENT_ID}`;
+    const oidcData = localStorage.getItem(OIDC_STORAGE_KEY);
+    
+    if (oidcData) {
+      try {
+        const { access_token } = JSON.parse(oidcData);
+        requestConfig.headers.Authorization = `Bearer ${access_token}`;
+      } catch (error) {
+        console.error('Error parsing OIDC data:', error);
+      }
     }
-  }
-  return config;
-});
-
-/* api.interceptors.response.use(
-  response => response,
-  error => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem(OIDC_STORAGE_KEY);
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-); */
+    return requestConfig;
+  });
+};
 
 export default api;
