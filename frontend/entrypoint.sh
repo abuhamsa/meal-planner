@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Generate self-signed cert if needed
+# Generate self-signed cert if needed 
 if [ "$HTTPS_ENABLED" = "true" ] && [ ! -f /etc/nginx/ssl/fullchain.pem ]; then
     echo "Generating self-signed certificate..."
     mkdir -p /etc/nginx/ssl
