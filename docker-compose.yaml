@@ -4,12 +4,10 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    environment:
-      - FLASK_ENV=production
-      - CORS_ORIGINS=https://127.0.0.1:5173
+    env_file:
+      - ./backend/.env-prod
     volumes:
       - ./backend/data:/app/data
     healthcheck:
@@ -25,7 +23,7 @@ services:
       context: ./frontend
     ports:
       - "80:80"
-      - "5173:443"
+      - "443:443"
     networks:
       - meal-network
     volumes:

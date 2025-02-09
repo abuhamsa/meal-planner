@@ -4,4 +4,6 @@ node_modules
 __pycache__
 dist
 build
+.env
+.env-prod
 .DS_Store
