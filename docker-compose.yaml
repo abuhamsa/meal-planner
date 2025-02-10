@@ -30,7 +30,7 @@ services:
       - ./frontend/runtime-config:/runtime-config
       - ./ssl-certs:/etc/nginx/ssl
     environment:
-      - HTTPS_ENABLED=true
+      - HTTPS_ENABLED=false
     depends_on:
       - backend
 
