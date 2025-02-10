@@ -4,8 +4,7 @@ Flask-Cors==5.0.0
 python-dotenv==1.0.1
 Flask-Migrate==4.1.0
 gunicorn==23.0.0
-flask_expects_json
-flask_limiter
-pyjwt
-authlib 
-requests
+flask_expects_json==1.7.0
+flask_limiter==3.10.1
+authlib==1.4.1
+requests==2.32.3

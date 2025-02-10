@@ -1,0 +1,25 @@
+# Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+venv/
+.venvlinux/
+.env
+*.db
+data/  # Exclude local SQLite database if used
+
+# Logs
+*.log
+*.pid
+
+# Git & IDE files
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Docker-related
+Dockerfile
+docker-compose.yml

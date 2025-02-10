@@ -11,3 +11,6 @@ backend/.venv*
 frontend/localhost+1.pem
 frontend/localhost+1-key.pem
 frontend/runtime-config/config.json
+ssl-certs/fullchain.pem
+ssl-certs/privkey.pem
+backend/.env-prod

@@ -1,15 +1,13 @@
-version: '3.8'
-
+---
 services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+    image: abuhamsa/meal-planner-backend:latest    
     ports:
       - "8000:8000"
-    environment:
-      - FLASK_ENV=production
-      - CORS_ORIGINS=http://localhost:3000
+    env_file:
+      - ./backend/.env-prod
     volumes:
       - ./backend/data:/app/data
     healthcheck:
@@ -23,14 +21,17 @@ services:
   frontend:
     build: 
       context: ./frontend
-      args:
-        - VITE_API_URL=__VITE_API_URL__
+    image: abuhamsa/meal-planner-frontend:latest  
     ports:
-      - "3000:80"
+      - "80:80"
+      - "5173:443"
     networks:
       - meal-network
+    volumes:
+      - ./frontend/runtime-config:/runtime-config
+      - ./frontend/ssl-certs:/etc/nginx/ssl
     environment:
-      - VITE_API_URL=http://192.168.1.178:8000
+      - HTTPS_ENABLED=true
     depends_on:
       - backend
 

@@ -2,32 +2,37 @@
 FROM node:22.13.1-alpine AS build
 
 WORKDIR /app
-
-# Copy package.json and package-lock.json to install dependencies (leverage cache)
 COPY package*.json ./
 RUN npm install
-
-# Copy the rest of the application files and build the frontend
 COPY . .
-
-# Set environment variable for build process
-ARG VITE_API_URL
-ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
 # Production stage
 FROM nginx:alpine
 
-# Copy the build artifacts from the build stage to the nginx HTML directory
+# Install openssl for certificate generation
+RUN apk add --no-cache openssl
+
+
+# Copy build artifacts
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Copy the custom nginx configuration and entrypoint script
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# SSL certificates directory
+RUN mkdir -p /etc/nginx/ssl
+
+# Copy nginx config and entrypoint
+COPY nginx-http.conf /etc/nginx/conf.d/nginx-http.conf.placeholder
+COPY nginx-https.conf /etc/nginx/conf.d/nginx-https.conf.placeholder
 COPY entrypoint.sh /entrypoint.sh
 
-# Make the entrypoint script executable
+# Make entrypoint executable
 RUN chmod +x /entrypoint.sh
 
-# Set entrypoint and command for nginx
+# Runtime configuration directory
+VOLUME /runtime-config
+
+EXPOSE 80 443
+
 ENTRYPOINT ["/entrypoint.sh"]
+#CMD ["sleep","infinity"]
 CMD ["nginx", "-g", "daemon off;"]
