@@ -2,7 +2,6 @@ FROM python:3.11-slim
 
 # Install system dependencies and clean up after
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user and set up working directory
@@ -16,7 +15,7 @@ RUN mkdir -p /home/appuser/.local/bin
 ENV PATH="/home/appuser/.local/bin:${PATH}"
 # Copy requirements and install dependencies
 COPY --chown=appuser:appuser requirements.txt .
-RUN pip install --user --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
 
 # Copy application files and entrypoint
 COPY --chown=appuser:appuser . .
