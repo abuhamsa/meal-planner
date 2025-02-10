@@ -1,5 +1,4 @@
-version: '3.8'
-
+---
 services:
   backend:
     build:
@@ -30,7 +29,7 @@ services:
       - meal-network
     volumes:
       - ./frontend/runtime-config:/runtime-config
-      - ./ssl-certs:/etc/nginx/ssl
+      - ./frontend/ssl-certs:/etc/nginx/ssl
     environment:
       - HTTPS_ENABLED=true
     depends_on:

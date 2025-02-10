@@ -1,8 +1,34 @@
-node_modules
-.git
-.vscode
-__pycache__
-dist
-build
+# Node modules (should be installed in the container)
+node_modules/
+
+# Build output (Vite's production build output)
+dist/
+.vite/
+
+# Environment files (to prevent secret leaks)
 .env
+.env.local
+.env.*.local
+
+# Logs and temporary files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# IDE/editor settings
+.vscode/
+.idea/
+
+# OS-specific files
 .DS_Store
+Thumbs.db
+
+# Git and version control
+.git/
+.gitignore
+
+# Docker files themselves
+Dockerfile
+docker-compose.yml

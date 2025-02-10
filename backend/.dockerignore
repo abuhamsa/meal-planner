@@ -1,9 +1,25 @@
-node_modules
-.git
-.vscode
-__pycache__
-dist
-build
+# Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+venv/
+.venvlinux/
 .env
-.env-prod
-.DS_Store
+*.db
+data/  # Exclude local SQLite database if used
+
+# Logs
+*.log
+*.pid
+
+# Git & IDE files
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Docker-related
+Dockerfile
+docker-compose.yml
