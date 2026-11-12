@@ -132,6 +132,4 @@ export const api = {
       `/plan/previous?date=${date}&slot=${slot}&person_ids=${personIds.join(",")}`,
     ),
   unassign: (entryId: number) => request<void>("DELETE", `/plan/${entryId}`),
-  copyPlan: (data: { from: string; to: string; days?: number; overwrite?: boolean }) =>
-    request<{ copied: number }>("POST", "/plan/copy", data),
 };

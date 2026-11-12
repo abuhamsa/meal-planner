@@ -175,26 +175,6 @@ def test_delete_used_meal_requires_force(client):
     assert client.get("/api/plan?start=2026-11-12&days=1").json == []
 
 
-def test_copy_week(client):
-    p1, p2 = people_ids(client)
-    client.put("/api/plan", json={"date": "2026-11-02", "slot": "lunch", "person_ids": [p1, p2], "meal_name": "Salad"})
-    client.put("/api/plan", json={"date": "2026-11-03", "slot": "dinner", "person_ids": [p1], "meal_name": "Stew"})
-    client.put("/api/plan", json={"date": "2026-11-10", "slot": "dinner", "person_ids": [p1], "meal_name": "Keep me"})
-
-    res = client.post("/api/plan/copy", json={"from": "2026-11-02", "to": "2026-11-09"})
-    assert res.json["copied"] == 2
-    week = client.get("/api/plan?start=2026-11-09").json
-    assert sorted((e["date"], e["slot"], e["meal"]["name"]) for e in week) == [
-        ("2026-11-09", "lunch", "Salad"),
-        ("2026-11-09", "lunch", "Salad"),
-        ("2026-11-10", "dinner", "Keep me"),
-    ]
-
-    client.post("/api/plan/copy", json={"from": "2026-11-02", "to": "2026-11-09", "overwrite": True})
-    week = client.get("/api/plan?start=2026-11-09").json
-    assert ("2026-11-10", "dinner", "Stew") in [(e["date"], e["slot"], e["meal"]["name"]) for e in week]
-
-
 # --- people -----------------------------------------------------------------
 
 
@@ -281,15 +261,6 @@ def test_previous_meal_for_leftovers(client):
     # Only looks back a week.
     assert prev("2026-11-20", "lunch", [p1])["meal"] is None
     assert client.get("/api/plan/previous?date=2026-11-10&slot=lunch").status_code == 400
-
-
-def test_copy_week_keeps_leftovers(client):
-    p1, _ = people_ids(client)
-    meal = client.put("/api/plan", json={"date": "2026-11-02", "slot": "dinner", "person_ids": [p1], "meal_name": "Chili"}).json[0]["meal"]
-    client.put("/api/plan", json={"date": "2026-11-03", "slot": "lunch", "person_ids": [p1], "meal_id": meal["id"], "leftovers": True})
-    client.post("/api/plan/copy", json={"from": "2026-11-02", "to": "2026-11-09"})
-    week = client.get("/api/plan?start=2026-11-09").json
-    assert [(e["date"], e["leftovers"]) for e in week] == [("2026-11-09", False), ("2026-11-10", True)]
 
 
 # --- migrations -------------------------------------------------------------

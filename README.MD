@@ -8,8 +8,7 @@ no matter how often you eat it.
 
 ## Features
 
-- **Weekly plan:** lunch and dinner for every day, with week navigation (← / → keys work too)
-  and "Copy last week" to fill empty slots from the previous week.
+- **Weekly plan:** lunch and dinner for every day, with week navigation (← / → keys work too).
 - **Reusable meal library:** search as you type, pick an existing meal, or create a new one inline.
   Meal names are unique (ignoring case), and renaming a meal updates the whole plan.
 - **Per-person plans:** start with two people and add more any time. People who eat the same
@@ -120,7 +119,6 @@ All endpoints are under `/api` and use JSON.
 | `GET /plan?start=YYYY-MM-DD&days=7` | Plan entries in a date range |
 | `PUT /plan` | `{date, slot, person_ids, meal_id \| meal_name}`: assign a meal (`meal_name` reuses or creates) |
 | `DELETE /plan/:id` | Remove one entry |
-| `POST /plan/copy` | `{from, to, days=7, overwrite=false}`: copy a range, e.g. last week |
 
 Deleting a person or a meal that's still in the plan returns `409` with `usage_count`. Repeat
 the request with `?force=true` to delete it together with its plan entries.

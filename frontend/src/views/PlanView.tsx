@@ -1,12 +1,12 @@
 import clsx from "clsx";
-import { CopyPlus, ExternalLink, Moon, Plus, Sun } from "lucide-react";
+import { ExternalLink, Moon, Plus, Sun } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Avatar, Button, Spinner } from "../components/ui";
+import { Avatar, Spinner } from "../components/ui";
 import type { Person, PlanEntry, Slot } from "../lib/api";
 import { SLOTS } from "../lib/api";
-import { addDays, formatDayMonth, formatWeekday, isToday, toISO, weekDays } from "../lib/dates";
+import { formatDayMonth, formatWeekday, isToday, toISO, weekDays } from "../lib/dates";
 import { seatsFor, withoutFollowers } from "../lib/plan";
-import { useCopyWeek, usePeople, usePlan } from "../lib/queries";
+import { usePeople, usePlan } from "../lib/queries";
 import { MealPicker, type PickerTarget } from "./MealPicker";
 
 const SLOT_META: Record<Slot, { label: string; icon: typeof Sun }> = {
@@ -18,7 +18,6 @@ export function PlanView({ weekStart }: { weekStart: Date }) {
   const start = toISO(weekStart);
   const { data: people = [], isLoading: loadingPeople } = usePeople();
   const { data: entries = [], isLoading: loadingPlan, isPlaceholderData } = usePlan(start);
-  const copyWeek = useCopyWeek();
   const [target, setTarget] = useState<PickerTarget | null>(null);
 
   const byCell = useMemo(() => {
@@ -40,42 +39,9 @@ export function PlanView({ weekStart }: { weekStart: Date }) {
 
   const today = toISO(new Date());
   const days = weekDays(weekStart);
-  // Count seats, so a kid eating along with someone counts as planned.
-  const planned = days.reduce(
-    (sum, day) =>
-      sum +
-      SLOTS.reduce(
-        (s, slot) => s + seatsFor(people, byCell.get(`${toISO(day)}|${slot}`) ?? []).filter((seat) => seat.entry).length,
-        0,
-      ),
-    0,
-  );
-  const total = days.length * SLOTS.length * people.length;
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="h-2 w-28 overflow-hidden rounded-full bg-stone-200 dark:bg-stone-800">
-            <div
-              className="h-full rounded-full bg-brand-500 transition-[width] duration-500"
-              style={{ width: `${total ? (planned / total) * 100 : 0}%` }}
-            />
-          </div>
-          <span className="text-sm text-stone-500">
-            {planned} of {total} planned
-          </span>
-        </div>
-        <Button
-          size="sm"
-          disabled={copyWeek.isPending}
-          onClick={() => copyWeek.mutate({ from: toISO(addDays(weekStart, -7)), to: start })}
-          title="Copy last week's meals into empty slots of this week"
-        >
-          <CopyPlus className="size-4" /> Copy last week
-        </Button>
-      </div>
-
       <div className={clsx("flex flex-col gap-3 transition-opacity", isPlaceholderData && "opacity-60")}>
         {days.map((day) => {
           const iso = toISO(day);

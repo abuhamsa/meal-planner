@@ -52,18 +52,6 @@ export function useUnassign() {
   });
 }
 
-export function useCopyWeek() {
-  const invalidate = useInvalidatePlanAndMeals();
-  return useMutation({
-    mutationFn: api.copyPlan,
-    onSuccess: async ({ copied }) => {
-      await invalidate();
-      toast.success(copied ? `Copied ${copied} meal${copied === 1 ? "" : "s"} from last week` : "Nothing to copy, last week is empty or this week is already filled");
-    },
-    onError,
-  });
-}
-
 export function useSaveMeal() {
   const invalidate = useInvalidatePlanAndMeals();
   return useMutation({
