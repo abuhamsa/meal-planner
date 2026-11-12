@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Landscape phones: wide but short. */
+@custom-variant short (@media (max-height: 30rem));
+
 @theme {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 

@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, Users, UtensilsCrossed } from "lucide-react";
+import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, LayoutGrid, Users, UtensilsCrossed } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Toaster } from "./components/Toaster";
 import { Button } from "./components/ui";
@@ -22,7 +22,12 @@ const tabFromHash = (): Tab => {
 
 export default function App() {
   const [tab, setTab] = useState<Tab>(tabFromHash);
-  const [week, setWeek] = useState(() => getWeekStart(new Date()));
+  // "?week=YYYY-MM-DD" opens a specific week (used by the week overview's edit link).
+  const [week, setWeek] = useState(() => {
+    const param = new URLSearchParams(window.location.search).get("week");
+    const parsed = param ? new Date(`${param}T00:00`) : null;
+    return getWeekStart(parsed && !Number.isNaN(parsed.getTime()) ? parsed : new Date());
+  });
   const isCurrentWeek = toISO(week) === toISO(getWeekStart(new Date()));
 
   useEffect(() => {
@@ -91,6 +96,14 @@ export default function App() {
             <Button size="icon" onClick={() => setWeek((w) => addDays(w, 7))} aria-label="Next week" title="Next week (→)">
               <ChevronRight className="size-4" />
             </Button>
+            <a
+              href={isCurrentWeek ? "/week" : `/week?start=${toISO(week)}`}
+              aria-label="Week overview"
+              title="Week overview"
+              className="flex size-9 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-200/60 hover:text-stone-900 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+            >
+              <LayoutGrid className="size-4" />
+            </a>
           </div>
         )}
       </header>

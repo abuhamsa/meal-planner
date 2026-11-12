@@ -16,8 +16,8 @@ export const usePeople = () => useQuery({ queryKey: keys.people, queryFn: api.pe
 export const useMeals = (params: Parameters<typeof api.meals>[0] = {}) =>
   useQuery({ queryKey: keys.meals(params), queryFn: () => api.meals(params), placeholderData: keepPreviousData });
 
-export const usePlan = (start: string) =>
-  useQuery({ queryKey: keys.plan(start), queryFn: () => api.plan(start), placeholderData: keepPreviousData });
+export const usePlan = (start: string, options: { refetchInterval?: number } = {}) =>
+  useQuery({ queryKey: keys.plan(start), queryFn: () => api.plan(start), placeholderData: keepPreviousData, ...options });
 
 const onError = (e: Error) => toast.error(e.message);
 
