@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, type Meal, type Person, type Slot } from "./api";
+import { api, type AssignInput, type Meal, type Person, type Slot } from "./api";
 import { toast } from "../components/Toaster";
 
 export const keys = {
@@ -30,12 +30,18 @@ function useInvalidatePlanAndMeals() {
 export function useAssign() {
   const invalidate = useInvalidatePlanAndMeals();
   return useMutation({
-    mutationFn: (data: { date: string; slot: Slot; person_ids: number[]; meal_id?: number; meal_name?: string }) =>
-      api.assign(data),
+    mutationFn: (data: AssignInput) => api.assign(data),
     onSuccess: invalidate,
     onError,
   });
 }
+
+export const usePreviousMeal = (date: string, slot: Slot, personIds: number[]) =>
+  useQuery({
+    queryKey: ["plan", "previous", date, slot, [...personIds].sort()],
+    queryFn: () => api.previousMeal(date, slot, personIds),
+    enabled: personIds.length > 0,
+  });
 
 export function useUnassign() {
   const invalidate = useInvalidatePlanAndMeals();

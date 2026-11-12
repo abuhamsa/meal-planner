@@ -126,6 +126,21 @@ def apply_person_fields(person, data):
         if not isinstance(data["position"], int) or isinstance(data["position"], bool):
             abort(400, "'position' must be an integer")
         person.position = data["position"]
+    if "follows_person_id" in data:
+        target_id = data["follows_person_id"]
+        if target_id is None:
+            person.follows_person_id = None
+            return
+        if not isinstance(target_id, int) or isinstance(target_id, bool):
+            abort(400, "'follows_person_id' must be an integer or null")
+        target = get_or_404(Person, target_id)
+        if person.id is not None and target.id == person.id:
+            abort(400, "A person can't follow themselves")
+        if target.follows_person_id is not None:
+            abort(400, f"{target.name} already follows someone else; pick a person who plans their own meals")
+        if person.id is not None and Person.query.filter_by(follows_person_id=person.id).count():
+            abort(400, f"Others follow {person.name}, so {person.name} must keep planning their own meals")
+        person.follows_person_id = target.id
 
 
 @api.post("/people")
@@ -172,7 +187,8 @@ def meal_stats_query():
             func.count(PlanEntry.id).label("usage_count"),
             func.max(PlanEntry.date).label("last_planned"),
         )
-        .outerjoin(PlanEntry, PlanEntry.meal_id == Meal.id)
+        # Leftovers reuse a meal but aren't counted as having it planned again.
+        .outerjoin(PlanEntry, (PlanEntry.meal_id == Meal.id) & PlanEntry.leftovers.is_(False))
         .group_by(Meal.id)
     )
 
@@ -320,6 +336,10 @@ def set_plan():
     else:
         abort(400, "Either 'meal_id' or 'meal_name' is required")
 
+    leftovers = data.get("leftovers", False)
+    if not isinstance(leftovers, bool):
+        abort(400, "'leftovers' must be true or false")
+
     existing = {
         e.person_id: e
         for e in PlanEntry.query.filter(
@@ -329,13 +349,51 @@ def set_plan():
     for pid in person_ids:
         entry = existing.get(pid)
         if entry:
-            entry.meal = meal
+            entry.meal, entry.leftovers = meal, leftovers
         else:
-            db.session.add(PlanEntry(date=day, slot=slot, person_id=pid, meal=meal))
+            db.session.add(PlanEntry(date=day, slot=slot, person_id=pid, meal=meal, leftovers=leftovers))
     db.session.commit()
 
     entries = PlanEntry.query.filter(PlanEntry.date == day, PlanEntry.slot == slot).all()
     return jsonify([e.to_dict() for e in entries])
+
+
+LEFTOVER_LOOKBACK_DAYS = 7
+
+
+@api.get("/plan/previous")
+def previous_meal():
+    """The most recent planned meal before a date + slot, as a source for leftovers.
+
+    Query: date, slot, person_ids (comma-separated). Looks back up to a week. Returns
+    {meal, date, slot} or {meal: null}.
+    """
+    day = parse_date(request.args.get("date"))
+    slot = request.args.get("slot")
+    if slot not in SLOTS:
+        abort(400, f"'slot' must be one of {', '.join(SLOTS)}")
+    try:
+        person_ids = [int(i) for i in request.args.get("person_ids", "").split(",") if i]
+    except ValueError:
+        abort(400, "'person_ids' must be comma-separated ids")
+    if not person_ids:
+        abort(400, "'person_ids' is required")
+
+    # Dinner comes after lunch on the same day.
+    slot_order = db.case((PlanEntry.slot == "dinner", 1), else_=0)
+    before = (PlanEntry.date < day) | ((PlanEntry.date == day) & (slot_order < SLOTS.index(slot)))
+    entry = (
+        PlanEntry.query.filter(
+            PlanEntry.person_id.in_(person_ids),
+            PlanEntry.date >= day - timedelta(days=LEFTOVER_LOOKBACK_DAYS),
+            before,
+        )
+        .order_by(PlanEntry.date.desc(), slot_order.desc(), PlanEntry.leftovers)
+        .first()
+    )
+    if entry is None:
+        return jsonify(meal=None)
+    return jsonify(meal=entry.meal.to_dict(), date=entry.date.isoformat(), slot=entry.slot)
 
 
 @api.delete("/plan/<int:entry_id>")
@@ -373,9 +431,11 @@ def copy_plan():
         if key in target:
             if not overwrite:
                 continue
-            target[key].meal_id = e.meal_id
+            target[key].meal_id, target[key].leftovers = e.meal_id, e.leftovers
         else:
-            db.session.add(PlanEntry(date=key[0], slot=e.slot, person_id=e.person_id, meal_id=e.meal_id))
+            db.session.add(
+                PlanEntry(date=key[0], slot=e.slot, person_id=e.person_id, meal_id=e.meal_id, leftovers=e.leftovers)
+            )
         copied += 1
     db.session.commit()
     return jsonify(copied=copied)

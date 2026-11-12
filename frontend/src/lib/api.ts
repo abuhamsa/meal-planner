@@ -6,6 +6,8 @@ export interface Person {
   name: string;
   color: string;
   position: number;
+  /** Set for kids: without their own plan entry they eat what this person eats. */
+  follows_person_id: number | null;
 }
 
 export interface Meal {
@@ -23,7 +25,17 @@ export interface PlanEntry {
   date: string;
   slot: Slot;
   person_id: number;
+  leftovers: boolean;
   meal: Meal;
+}
+
+export interface AssignInput {
+  date: string;
+  slot: Slot;
+  person_ids: number[];
+  meal_id?: number;
+  meal_name?: string;
+  leftovers?: boolean;
 }
 
 export interface Me {
@@ -113,8 +125,12 @@ export const api = {
   deleteMeal: (id: number, force = false) => request<void>("DELETE", `/meals/${id}${force ? "?force=true" : ""}`),
 
   plan: (start: string, days = 7) => request<PlanEntry[]>("GET", `/plan?start=${start}&days=${days}`),
-  assign: (data: { date: string; slot: Slot; person_ids: number[]; meal_id?: number; meal_name?: string }) =>
-    request<PlanEntry[]>("PUT", "/plan", data),
+  assign: (data: AssignInput) => request<PlanEntry[]>("PUT", "/plan", data),
+  previousMeal: (date: string, slot: Slot, personIds: number[]) =>
+    request<{ meal: Meal | null; date?: string; slot?: Slot }>(
+      "GET",
+      `/plan/previous?date=${date}&slot=${slot}&person_ids=${personIds.join(",")}`,
+    ),
   unassign: (entryId: number) => request<void>("DELETE", `/plan/${entryId}`),
   copyPlan: (data: { from: string; to: string; days?: number; overwrite?: boolean }) =>
     request<{ copied: number }>("POST", "/plan/copy", data),

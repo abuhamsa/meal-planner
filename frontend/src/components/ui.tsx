@@ -110,10 +110,20 @@ export function Dialog({
   );
 }
 
-export function Avatar({ person, size = "md", ring }: { person: Person; size?: "sm" | "md"; ring?: boolean }) {
+export function Avatar({
+  person,
+  size = "md",
+  ring,
+  title,
+}: {
+  person: Person;
+  size?: "sm" | "md";
+  ring?: boolean;
+  title?: string;
+}) {
   return (
     <span
-      title={person.name}
+      title={title ?? person.name}
       className={clsx(
         "inline-flex shrink-0 select-none items-center justify-center rounded-full font-semibold text-white",
         size === "sm" ? "size-5 text-[0.625rem]" : "size-7 text-xs",

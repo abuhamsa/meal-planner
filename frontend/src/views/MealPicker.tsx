@@ -1,10 +1,11 @@
 import clsx from "clsx";
-import { Check, ExternalLink, Plus, Search, Star, Trash2 } from "lucide-react";
+import { Check, ExternalLink, Plus, Search, Soup, Star, Trash2 } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Avatar, Button, Dialog, Spinner } from "../components/ui";
 import type { Meal, Person, PlanEntry, Slot } from "../lib/api";
-import { formatDate, formatRelativeDay, fromISO } from "../lib/dates";
-import { useAssign, useMeals, useUnassign } from "../lib/queries";
+import { formatDate, formatRelativeDay, formatWeekday, fromISO } from "../lib/dates";
+import { mealLabel, seatsFor } from "../lib/plan";
+import { useAssign, useMeals, usePreviousMeal, useUnassign } from "../lib/queries";
 
 export interface PickerTarget {
   date: string;
@@ -67,7 +68,28 @@ function PickerBody({
   const [pendingEnter, setPendingEnter] = useState(false);
 
   const selectedEntries = entries.filter((e) => selected.includes(e.person_id));
-  const currentMealIds = new Set(selectedEntries.map((e) => e.meal.id));
+  const currentMealIds = new Set(selectedEntries.filter((e) => !e.leftovers).map((e) => e.meal.id));
+  const seats = seatsFor(people, entries);
+  const nameOf = (id: number | null) => people.find((p) => p.id === id)?.name ?? "";
+  // Selected kids who would stop eating along with the person they follow.
+  const splitting = people.filter(
+    (p) => selected.includes(p.id) && p.follows_person_id != null && !entries.some((e) => e.person_id === p.id),
+  );
+
+  // Leftovers come from the last meal of the selected people (kids: of who they follow).
+  const sourceIds = [
+    ...new Set(selected.flatMap((id) => [id, ...people.filter((p) => p.id === id && p.follows_person_id != null).map((p) => p.follows_person_id!)])),
+  ];
+  const { data: previous } = usePreviousMeal(target.date, target.slot, sourceIds);
+  const leftoverMeal = previous?.meal ?? null;
+
+  const chooseLeftovers = () => {
+    if (!leftoverMeal || !selected.length || assign.isPending) return;
+    assign.mutate(
+      { date: target.date, slot: target.slot, person_ids: selected, meal_id: leftoverMeal.id, leftovers: true },
+      { onSuccess: onDone },
+    );
+  };
 
   const options = useMemo<Option[]>(() => {
     const q = deferredQuery.toLowerCase();
@@ -143,7 +165,7 @@ function PickerBody({
           <div className="flex flex-wrap gap-2">
             {people.map((p) => {
               const on = selected.includes(p.id);
-              const current = entries.find((e) => e.person_id === p.id);
+              const seat = seats.find((x) => x.person.id === p.id);
               return (
                 <button
                   key={p.id}
@@ -159,11 +181,25 @@ function PickerBody({
                 >
                   <Avatar person={p} size="sm" />
                   <span className="font-medium">{p.name}</span>
-                  {current && <span className={clsx("max-w-32 truncate text-xs", on ? "opacity-70" : "opacity-60")}>· {current.meal.name}</span>}
+                  {seat?.entry ? (
+                    <span className={clsx("max-w-36 truncate text-xs", on ? "opacity-70" : "opacity-60")}>
+                      · {seat.inherited ? `with ${nameOf(p.follows_person_id)}` : mealLabel(seat.entry)}
+                    </span>
+                  ) : (
+                    p.follows_person_id != null && (
+                      <span className={clsx("text-xs", on ? "opacity-70" : "opacity-60")}>· eats with {nameOf(p.follows_person_id)}</span>
+                    )
+                  )}
                 </button>
               );
             })}
           </div>
+          {splitting.length > 0 && (
+            <p className="mt-2 text-xs text-stone-500">
+              {splitting.map((p) => p.name).join(", ")} will get {splitting.length === 1 ? "a separate meal" : "separate meals"} instead of
+              eating along. Clear it later to go back.
+            </p>
+          )}
         </div>
       )}
 
@@ -183,6 +219,25 @@ function PickerBody({
         />
         {isFetching && <Spinner className="absolute right-3 top-3 size-4 text-stone-400" />}
       </div>
+
+      {!query && leftoverMeal && previous?.date && previous.slot && (
+        <button
+          type="button"
+          onClick={chooseLeftovers}
+          disabled={assign.isPending}
+          className="-mt-1 flex cursor-pointer items-center gap-3 rounded-xl bg-amber-50 px-3 py-2.5 text-left ring-1 ring-amber-200/80 transition hover:bg-amber-100 dark:bg-amber-950/30 dark:ring-amber-800/50 dark:hover:bg-amber-950/60"
+        >
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-200/70 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+            <Soup className="size-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium">Just leftovers: {leftoverMeal.name}</span>
+            <span className="block text-xs text-stone-500">
+              From {formatWeekday(fromISO(previous.date), true)} {previous.slot === "lunch" ? "lunch" : "dinner"}
+            </span>
+          </span>
+        </button>
+      )}
 
       <ul ref={listRef} id="meal-options" role="listbox" className="-mx-2 max-h-80 overflow-y-auto">
         {!query && meals.length > 0 && (
@@ -227,7 +282,7 @@ function PickerBody({
         <div className="-mx-5 -mb-4 flex items-center justify-between gap-3 border-t border-stone-100 bg-stone-50/60 px-5 py-3 dark:border-stone-800 dark:bg-stone-950/40">
           <span className="truncate text-sm text-stone-500">
             {selectedEntries.length === 1
-              ? `Planned: ${selectedEntries[0].meal.name}`
+              ? `Planned: ${mealLabel(selectedEntries[0])}`
               : `${selectedEntries.length} people have something planned`}
           </span>
           <Button

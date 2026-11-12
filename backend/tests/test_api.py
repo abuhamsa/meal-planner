@@ -218,3 +218,103 @@ def test_delete_person_with_entries_requires_force_and_keeps_one(client):
     assert client.delete(f"/api/people/{p2}?force=true").status_code == 204
     assert client.get("/api/plan?start=2026-11-12&days=1").json == []
     assert client.delete(f"/api/people/{p1}").status_code == 409
+
+
+# --- kids & leftovers -------------------------------------------------------
+
+
+def test_kid_follow_validation(client):
+    p1, p2 = people_ids(client)
+    kid = client.post("/api/people", json={"name": "Mia", "follows_person_id": p1}).json
+    assert kid["follows_person_id"] == p1
+
+    # No chains, no self-follow, and someone who is followed can't become a follower.
+    assert client.post("/api/people", json={"name": "X", "follows_person_id": kid["id"]}).status_code == 400
+    assert client.patch(f"/api/people/{p2}", json={"follows_person_id": p2}).status_code == 400
+    assert client.patch(f"/api/people/{p1}", json={"follows_person_id": p2}).status_code == 400
+    assert client.patch(f"/api/people/{kid['id']}", json={"follows_person_id": 999}).status_code == 404
+
+    assert client.patch(f"/api/people/{kid['id']}", json={"follows_person_id": None}).json["follows_person_id"] is None
+
+
+def test_deleting_followed_person_unlinks_kid(client):
+    _, p2 = people_ids(client)
+    kid = client.post("/api/people", json={"name": "Mia", "follows_person_id": p2}).json
+    assert client.delete(f"/api/people/{p2}").status_code == 204
+    people = {p["id"]: p for p in client.get("/api/people").json}
+    assert people[kid["id"]]["follows_person_id"] is None
+
+
+def test_leftovers_flag_and_stats(client):
+    p1, p2 = people_ids(client)
+    entry = client.put("/api/plan", json={"date": "2026-11-09", "slot": "dinner", "person_ids": [p1, p2], "meal_name": "Lasagne"}).json[0]
+    meal_id = entry["meal"]["id"]
+    res = client.put("/api/plan", json={"date": "2026-11-10", "slot": "lunch", "person_ids": [p1], "meal_id": meal_id, "leftovers": True})
+    assert res.json[0]["leftovers"] is True
+
+    meal = client.get(f"/api/meals/{meal_id}").json
+    assert meal["usage_count"] == 2  # leftovers don't count
+    assert meal["last_planned"] == "2026-11-09"
+
+    # Assigning a normal meal resets the flag.
+    res = client.put("/api/plan", json={"date": "2026-11-10", "slot": "lunch", "person_ids": [p1], "meal_id": meal_id})
+    assert res.json[0]["leftovers"] is False
+    assert client.put("/api/plan", json={"date": "2026-11-10", "slot": "lunch", "person_ids": [p1], "meal_id": meal_id, "leftovers": "yes"}).status_code == 400
+
+
+def test_previous_meal_for_leftovers(client):
+    p1, p2 = people_ids(client)
+    client.put("/api/plan", json={"date": "2026-11-09", "slot": "lunch", "person_ids": [p1], "meal_name": "Soup"})
+    client.put("/api/plan", json={"date": "2026-11-09", "slot": "dinner", "person_ids": [p1], "meal_name": "Curry"})
+    client.put("/api/plan", json={"date": "2026-11-10", "slot": "dinner", "person_ids": [p2], "meal_name": "Other person"})
+
+    def prev(day, slot, ids):
+        return client.get(f"/api/plan/previous?date={day}&slot={slot}&person_ids={','.join(map(str, ids))}").json
+
+    # Dinner comes after lunch on the same day.
+    assert prev("2026-11-10", "lunch", [p1])["meal"]["name"] == "Curry"
+    assert prev("2026-11-09", "dinner", [p1])["meal"]["name"] == "Soup"
+    assert prev("2026-11-09", "lunch", [p1])["meal"] is None
+    # Only the given people count.
+    assert prev("2026-11-11", "lunch", [p1])["meal"]["name"] == "Curry"
+    assert prev("2026-11-11", "lunch", [p1, p2])["meal"]["name"] == "Other person"
+    # Only looks back a week.
+    assert prev("2026-11-20", "lunch", [p1])["meal"] is None
+    assert client.get("/api/plan/previous?date=2026-11-10&slot=lunch").status_code == 400
+
+
+def test_copy_week_keeps_leftovers(client):
+    p1, _ = people_ids(client)
+    meal = client.put("/api/plan", json={"date": "2026-11-02", "slot": "dinner", "person_ids": [p1], "meal_name": "Chili"}).json[0]["meal"]
+    client.put("/api/plan", json={"date": "2026-11-03", "slot": "lunch", "person_ids": [p1], "meal_id": meal["id"], "leftovers": True})
+    client.post("/api/plan/copy", json={"from": "2026-11-02", "to": "2026-11-09"})
+    week = client.get("/api/plan?start=2026-11-09").json
+    assert [(e["date"], e["leftovers"]) for e in week] == [("2026-11-09", False), ("2026-11-10", True)]
+
+
+# --- migrations -------------------------------------------------------------
+
+
+def test_migrations_keep_existing_data(tmp_path):
+    """SQLite rebuilds tables during migrations; that must never cascade-delete plan entries."""
+    import sqlite3
+    from pathlib import Path
+
+    from flask_migrate import downgrade, upgrade
+
+    db_file = tmp_path / "m.db"
+    app = create_app({"SQLALCHEMY_DATABASE_URI": f"sqlite:///{db_file}", "AUTH_MODE": "none"})
+    migrations = str(Path(__file__).resolve().parent.parent / "migrations")
+    with app.app_context():
+        upgrade(directory=migrations, revision="abce87011c71")
+        con = sqlite3.connect(db_file)
+        con.execute("insert into person(name,color,position,created_at) values('A','#000000',0,'2026-01-01')")
+        con.execute("insert into meal(name,name_key,favorite,created_at) values('Pasta','pasta',0,'2026-01-01')")
+        con.execute("insert into plan_entry(date,slot,person_id,meal_id) values('2026-11-12','lunch',1,1)")
+        con.commit()
+        con.close()
+
+        upgrade(directory=migrations)
+        assert sqlite3.connect(db_file).execute("select count(*) from plan_entry").fetchone()[0] == 1
+        downgrade(directory=migrations, revision="abce87011c71")
+        assert sqlite3.connect(db_file).execute("select count(*) from plan_entry").fetchone()[0] == 1

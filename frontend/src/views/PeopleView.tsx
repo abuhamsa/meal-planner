@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { ArrowDown, ArrowUp, Check, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Baby, Check, Plus, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { toast } from "../components/Toaster";
 import { Avatar, Button, Input, Spinner } from "../components/ui";
@@ -13,12 +13,23 @@ export function PeopleView() {
   const { data: me } = useMe();
   const save = useSavePerson();
   const [newName, setNewName] = useState("");
+  const [newIsKid, setNewIsKid] = useState(false);
+  // Kids follow the first person who plans their own meals ("Person 1") by default.
+  const defaultLead = people.find((p) => p.follows_person_id == null);
 
   const add = (e: FormEvent) => {
     e.preventDefault();
     const used = new Set(people.map((p) => p.color));
     const color = COLORS.find((c) => !used.has(c)) ?? COLORS[people.length % COLORS.length];
-    save.mutate({ name: newName, color }, { onSuccess: () => setNewName("") });
+    save.mutate(
+      { name: newName, color, ...(newIsKid && defaultLead ? { follows_person_id: defaultLead.id } : {}) },
+      {
+        onSuccess: () => {
+          setNewName("");
+          setNewIsKid(false);
+        },
+      },
+    );
   };
 
   const move = (index: number, dir: -1 | 1) => {
@@ -52,6 +63,7 @@ export function PeopleView() {
           <PersonRow
             key={p.id}
             person={p}
+            people={people}
             canDelete={people.length > 1}
             canMoveUp={i > 0}
             canMoveDown={i < people.length - 1}
@@ -60,11 +72,29 @@ export function PeopleView() {
         ))}
       </ul>
 
-      <form onSubmit={add} className="mt-3 flex gap-2">
-        <Input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={50} placeholder="Add a person…" />
-        <Button type="submit" variant="primary" disabled={!newName.trim() || save.isPending}>
-          <Plus className="size-4" /> Add
-        </Button>
+      <form onSubmit={add} className="mt-3">
+        <div className="flex gap-2">
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            maxLength={50}
+            placeholder={newIsKid ? "Add a kid…" : "Add a person…"}
+          />
+          <Button type="submit" variant="primary" disabled={!newName.trim() || save.isPending}>
+            <Plus className="size-4" /> Add
+          </Button>
+        </div>
+        {defaultLead && (
+          <label className="mt-2 flex w-fit cursor-pointer items-center gap-2 text-sm text-stone-600 dark:text-stone-400">
+            <input
+              type="checkbox"
+              checked={newIsKid}
+              onChange={(e) => setNewIsKid(e.target.checked)}
+              className="size-4 accent-brand-600"
+            />
+            <Baby className="size-4" /> Kid: eats what {defaultLead.name} eats unless planned separately
+          </label>
+        )}
       </form>
 
       {me && (
@@ -78,12 +108,14 @@ export function PeopleView() {
 
 function PersonRow({
   person,
+  people,
   canDelete,
   canMoveUp,
   canMoveDown,
   onMove,
 }: {
   person: Person;
+  people: Person[];
   canDelete: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
@@ -152,6 +184,8 @@ function PersonRow({
         </Button>
       </div>
 
+      <EatsWith person={person} people={people} />
+
       {showColors && (
         <div className="flex flex-wrap gap-2 px-1 pb-1 pt-3">
           {COLORS.map((c) => (
@@ -186,5 +220,42 @@ function PersonRow({
         </div>
       )}
     </li>
+  );
+}
+
+function EatsWith({ person, people }: { person: Person; people: Person[] }) {
+  const save = useSavePerson();
+  const followers = people.filter((p) => p.follows_person_id === person.id);
+  // Only people who plan their own meals can be followed (no chains).
+  const leads = people.filter((p) => p.id !== person.id && p.follows_person_id == null);
+
+  if (followers.length) {
+    return (
+      <p className="flex items-center gap-1.5 px-2 pb-1 pt-1.5 text-xs text-stone-500">
+        <Baby className="size-3.5" />
+        {followers.map((f) => f.name).join(", ")} eat{followers.length === 1 ? "s" : ""} along with {person.name}
+      </p>
+    );
+  }
+  if (!leads.length) return null;
+
+  return (
+    <label className="flex flex-wrap items-center gap-2 px-2 pb-1 pt-1.5 text-xs text-stone-500">
+      {person.follows_person_id != null && <Baby className="size-3.5" />}
+      Eats
+      <select
+        value={person.follows_person_id ?? ""}
+        disabled={save.isPending}
+        onChange={(e) => save.mutate({ id: person.id, follows_person_id: e.target.value ? Number(e.target.value) : null })}
+        className="cursor-pointer rounded-md bg-stone-100 px-2 py-1 font-medium text-stone-700 outline-none focus:ring-2 focus:ring-brand-500 dark:bg-stone-800 dark:text-stone-200"
+      >
+        <option value="">their own meals</option>
+        {leads.map((p) => (
+          <option key={p.id} value={p.id}>
+            what {p.name} eats (kid)
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

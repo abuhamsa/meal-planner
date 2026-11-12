@@ -25,6 +25,10 @@ class Person(db.Model):
     name = db.Column(db.String(50), nullable=False)
     color = db.Column(db.String(7), nullable=False, default="#6366f1")
     position = db.Column(db.Integer, nullable=False, default=0)
+    # Kids follow another person: without their own plan entry they eat what that person eats.
+    follows_person_id = db.Column(
+        db.Integer, db.ForeignKey("person.id", name="fk_person_follows_person_id", ondelete="SET NULL")
+    )
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
 
     entries = db.relationship(
@@ -37,6 +41,7 @@ class Person(db.Model):
             "name": self.name,
             "color": self.color,
             "position": self.position,
+            "follows_person_id": self.follows_person_id,
         }
 
 
@@ -90,6 +95,8 @@ class PlanEntry(db.Model):
     meal_id = db.Column(
         db.Integer, db.ForeignKey("meal.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # Eating the rest of an earlier meal. Shown as "Leftovers: <meal>" and not counted in stats.
+    leftovers = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
 
     person = db.relationship("Person", back_populates="entries")
     meal = db.relationship("Meal", back_populates="entries")
@@ -100,5 +107,6 @@ class PlanEntry(db.Model):
             "date": self.date.isoformat(),
             "slot": self.slot,
             "person_id": self.person_id,
+            "leftovers": self.leftovers,
             "meal": self.meal.to_dict(),
         }
