@@ -1,11 +1,11 @@
 import clsx from "clsx";
-import { Check, ExternalLink, Plus, Search, Soup, Star, Store, Trash2 } from "lucide-react";
+import { Check, ExternalLink, PartyPopper, Plus, Search, Soup, Star, Store, Trash2, X } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Avatar, Button, Dialog, Spinner } from "../components/ui";
 import type { Meal, Person, PlanEntry, Slot } from "../lib/api";
-import { formatDate, formatRelativeDay, formatWeekday, fromISO } from "../lib/dates";
+import { formatDate, formatRelativeDay, formatWeekday, fromISO, toISO, weekStart } from "../lib/dates";
 import { mealLabel, seatsFor } from "../lib/plan";
-import { useAssign, useMeals, usePreviousMeal, useUnassign } from "../lib/queries";
+import { slotMap, useAssign, useMeals, usePlanSlots, usePreviousMeal, useSetGuests, useUnassign } from "../lib/queries";
 
 export interface PickerTarget {
   date: string;
@@ -160,6 +160,7 @@ function PickerBody({
 
   return (
     <div className="flex flex-col gap-4">
+      <Guests date={target.date} slot={target.slot} />
       {people.length > 1 && (
         <div>
           <div className="mb-2 flex items-center justify-between text-sm font-medium text-stone-700 dark:text-stone-300">
@@ -382,5 +383,61 @@ function MealOption({ meal, current }: { meal: Meal; current: boolean }) {
         </span>
       </span>
     </>
+  );
+}
+
+/** Guests are about the whole lunch or dinner, not one person. Saved right away. */
+function Guests({ date, slot }: { date: string; slot: Slot }) {
+  const { data } = usePlanSlots(toISO(weekStart(fromISO(date))));
+  const info = slotMap(data).get(`${date}|${slot}`);
+  const setGuests = useSetGuests();
+  const [note, setNote] = useState(info?.guests_note ?? "");
+  useEffect(() => setNote(info?.guests_note ?? ""), [info?.guests_note]);
+
+  const save = (guests: boolean, guestsNote = note) =>
+    setGuests.mutate({ date, slot, guests, guests_note: guests ? guestsNote.trim() || null : null });
+
+  if (!info?.guests) {
+    return (
+      <button
+        type="button"
+        onClick={() => save(true, "")}
+        disabled={setGuests.isPending}
+        className="-mb-1 flex w-fit cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-stone-500 ring-1 ring-stone-200 transition hover:bg-violet-50 hover:text-violet-700 hover:ring-violet-200 dark:ring-stone-700 dark:hover:bg-violet-950/40 dark:hover:text-violet-300"
+      >
+        <PartyPopper className="size-4" /> We have guests
+      </button>
+    );
+  }
+  return (
+    <div className="-mb-1 flex items-center gap-2 rounded-xl bg-violet-50 p-1.5 pl-3 ring-1 ring-violet-200 dark:bg-violet-950/30 dark:ring-violet-800/60">
+      <PartyPopper className="size-4 shrink-0 text-violet-600 dark:text-violet-400" />
+      <span className="shrink-0 text-sm font-medium text-violet-900 dark:text-violet-200">Guests</span>
+      <input
+        value={note}
+        maxLength={100}
+        onChange={(e) => setNote(e.target.value)}
+        onBlur={() => note.trim() !== (info.guests_note ?? "") && save(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.currentTarget.blur();
+          }
+        }}
+        placeholder="Who's coming? (optional)"
+        aria-label="Who's coming?"
+        className="h-8 min-w-0 flex-1 rounded-lg bg-white px-2.5 text-sm outline-none ring-1 ring-violet-200 focus:ring-2 focus:ring-violet-500 dark:bg-stone-900 dark:ring-violet-800"
+      />
+      <button
+        type="button"
+        onClick={() => save(false)}
+        disabled={setGuests.isPending}
+        aria-label="No guests"
+        title="No guests"
+        className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-violet-700 hover:bg-violet-100 dark:text-violet-300 dark:hover:bg-violet-900/50"
+      >
+        <X className="size-4" />
+      </button>
+    </div>
   );
 }

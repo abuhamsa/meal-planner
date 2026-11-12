@@ -340,3 +340,29 @@ def test_db_rejects_entry_without_meal_unless_eating_out(app):
         db.session.add(PlanEntry(date=date(2026, 11, 12), slot="lunch", person_id=1, meal_id=None))
         with pytest.raises(sqlalchemy.exc.IntegrityError):
             db.session.commit()
+
+
+# --- guests -----------------------------------------------------------------
+
+
+def test_guests_flag(client):
+    base = {"date": "2026-11-14", "slot": "dinner"}
+    res = client.put("/api/plan/slots", json={**base, "guests": True, "guests_note": "  Müllers "})
+    assert res.json == {**base, "guests": True, "guests_note": "Müllers"}
+    client.put("/api/plan/slots", json={"date": "2026-11-20", "slot": "lunch", "guests": True})
+
+    week = client.get("/api/plan/slots?start=2026-11-09").json
+    assert week == [{**base, "guests": True, "guests_note": "Müllers"}]
+
+    # Turning it off removes the slot details, note included.
+    assert client.put("/api/plan/slots", json={**base, "guests": False, "guests_note": "x"}).json["guests_note"] is None
+    assert client.get("/api/plan/slots?start=2026-11-09").json == []
+
+
+def test_guests_validation(client):
+    base = {"date": "2026-11-14", "slot": "dinner"}
+    assert client.put("/api/plan/slots", json={**base, "guests": "yes"}).status_code == 400
+    assert client.put("/api/plan/slots", json={**base}).status_code == 400
+    assert client.put("/api/plan/slots", json={**base, "slot": "brunch", "guests": True}).status_code == 400
+    assert client.put("/api/plan/slots", json={**base, "guests": True, "guests_note": "x" * 101}).status_code == 400
+    assert client.get("/api/plan/slots?start=nope").status_code == 400

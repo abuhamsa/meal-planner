@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, type AssignInput, type Meal, type Person, type Slot } from "./api";
+import { api, type AssignInput, type Meal, type Person, type PlanSlot, type Slot } from "./api";
 import { toast } from "../components/Toaster";
 
 export const keys = {
@@ -7,6 +7,7 @@ export const keys = {
   people: ["people"] as const,
   meals: (params: object = {}) => ["meals", params] as const,
   plan: (start: string) => ["plan", start] as const,
+  planSlots: (start: string) => ["plan", start, "slots"] as const,
 };
 
 export const useMe = () => useQuery({ queryKey: keys.me, queryFn: api.me, staleTime: Infinity });
@@ -25,6 +26,21 @@ const onError = (e: Error) => toast.error(e.message);
 function useInvalidatePlanAndMeals() {
   const qc = useQueryClient();
   return () => Promise.all([qc.invalidateQueries({ queryKey: ["plan"] }), qc.invalidateQueries({ queryKey: ["meals"] })]);
+}
+
+export const usePlanSlots = (start: string, options: { refetchInterval?: number } = {}) =>
+  useQuery({ queryKey: keys.planSlots(start), queryFn: () => api.planSlots(start), placeholderData: keepPreviousData, ...options });
+
+/** Index slot details by "date|slot". */
+export const slotMap = (slots: PlanSlot[] = []) => new Map(slots.map((s) => [`${s.date}|${s.slot}`, s]));
+
+export function useSetGuests() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { date: string; slot: Slot; guests: boolean; guests_note?: string | null }) => api.setPlanSlot(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["plan"] }),
+    onError,
+  });
 }
 
 export function useAssign() {

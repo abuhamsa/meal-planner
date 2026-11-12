@@ -32,6 +32,14 @@ export interface PlanEntry {
   meal: Meal | null;
 }
 
+/** Details about a whole lunch or dinner. */
+export interface PlanSlot {
+  date: string;
+  slot: Slot;
+  guests: boolean;
+  guests_note: string | null;
+}
+
 export interface AssignInput {
   date: string;
   slot: Slot;
@@ -137,4 +145,7 @@ export const api = {
       `/plan/previous?date=${date}&slot=${slot}&person_ids=${personIds.join(",")}`,
     ),
   unassign: (entryId: number) => request<void>("DELETE", `/plan/${entryId}`),
+  planSlots: (start: string, days = 7) => request<PlanSlot[]>("GET", `/plan/slots?start=${start}&days=${days}`),
+  setPlanSlot: (data: Omit<PlanSlot, "guests_note"> & { guests_note?: string | null }) =>
+    request<PlanSlot>("PUT", "/plan/slots", data),
 };

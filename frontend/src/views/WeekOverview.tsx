@@ -1,8 +1,8 @@
 import clsx from "clsx";
-import { ChevronLeft, ChevronRight, Moon, Pencil, Soup, Store, Sun } from "lucide-react";
+import { ChevronLeft, ChevronRight, Moon, PartyPopper, Pencil, Soup, Store, Sun } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Spinner } from "../components/ui";
-import type { Person, PlanEntry, Slot } from "../lib/api";
+import type { Person, PlanEntry, PlanSlot, Slot } from "../lib/api";
 import { SLOTS } from "../lib/api";
 import {
   addDays,
@@ -17,7 +17,7 @@ import {
   weekStart as getWeekStart,
 } from "../lib/dates";
 import { entryGroupKey, seatsFor, type Seat } from "../lib/plan";
-import { usePeople, usePlan } from "../lib/queries";
+import { slotMap, usePeople, usePlan, usePlanSlots } from "../lib/queries";
 
 const SLOT_META: Record<Slot, { label: string; icon: typeof Sun }> = {
   lunch: { label: "Lunch", icon: Sun },
@@ -41,6 +41,8 @@ export function WeekOverview() {
   const { data: people = [], isLoading: loadingPeople } = usePeople();
   // Refresh regularly so the page can stay open on a tablet or the fridge.
   const { data: entries = [], isLoading: loadingPlan, isPlaceholderData } = usePlan(start, { refetchInterval: 60_000 });
+  const { data: slotDetails } = usePlanSlots(start, { refetchInterval: 60_000 });
+  const slotInfo = useMemo(() => slotMap(slotDetails), [slotDetails]);
 
   useEffect(() => {
     const url = isCurrentWeek ? "/week" : `/week?start=${start}`;
@@ -92,6 +94,7 @@ export function WeekOverview() {
       people={people}
       short={shortName}
       layout={layout}
+      info={slotInfo.get(`${toISO(day)}|${slot}`)}
       seats={seatsFor(people, byCell.get(`${toISO(day)}|${slot}`) ?? [])}
     />
   );
@@ -165,7 +168,7 @@ export function WeekOverview() {
                 <div key={iso} className="contents">
                   <DayLabel day={day} past={iso < today} />
                   {SLOTS.map((slot) => (
-                    <CellBox key={slot} today={isToday(day)} past={iso < today} layout="rows" content={entries}>
+                    <CellBox key={slot} today={isToday(day)} past={iso < today} layout="rows" content={[entries, slotDetails]}>
                       {cell(day, slot, "rows")}
                     </CellBox>
                   ))}
@@ -184,7 +187,7 @@ export function WeekOverview() {
               <div key={slot} className="contents">
                 <SlotLabel slot={slot} vertical />
                 {days.map((day) => (
-                  <CellBox key={toISO(day)} today={isToday(day)} past={toISO(day) < today} layout="columns" content={entries}>
+                  <CellBox key={toISO(day)} today={isToday(day)} past={toISO(day) < today} layout="columns" content={[entries, slotDetails]}>
                     {cell(day, slot, "columns")}
                   </CellBox>
                 ))}
@@ -339,13 +342,16 @@ function Cell({
   people,
   short,
   layout,
+  info,
   seats,
 }: {
   people: Person[];
   short: Map<number, string>;
   layout: Layout;
+  info?: PlanSlot;
   seats: Seat[];
 }) {
+  const guests = info?.guests ? <GuestsLine note={info.guests_note} /> : null;
   const groups = new Map<string, { entry: PlanEntry; people: Person[] }>();
   for (const seat of seats) {
     if (!seat.entry) continue;
@@ -354,12 +360,20 @@ function Cell({
     g.people.push(seat.person);
     groups.set(key, g);
   }
-  if (!groups.size) return <span className="text-stone-300 dark:text-stone-700">–</span>;
+  if (!groups.size)
+    return (
+      <>
+        {guests}
+        <span className="text-stone-300 dark:text-stone-700">–</span>
+      </>
+    );
 
   // Name who eats what, but only when people eat different things.
   const showWho = people.length > 1 && (groups.size > 1 || [...groups.values()][0].people.length < people.length);
   return (
-    <ul className={clsx("flex flex-col", showWho ? "gap-[0.35em]" : "gap-[0.2em]", showWho && layout === "columns" && "gap-[0.5em] short:gap-[0.35em]")}>
+    <>
+      {guests}
+      <ul className={clsx("flex flex-col", showWho ? "gap-[0.35em]" : "gap-[0.2em]", showWho && layout === "columns" && "gap-[0.5em] short:gap-[0.35em]")}>
       {[...groups.values()].map(({ entry, people: eaters }) => (
         <li
           key={entryGroupKey(entry)}
@@ -408,5 +422,18 @@ function Cell({
         </li>
       ))}
     </ul>
+    </>
+  );
+}
+
+function GuestsLine({ note }: { note: string | null }) {
+  return (
+    <div
+      className="mb-[0.3em] flex w-fit max-w-full items-center gap-[0.3em] rounded-md bg-violet-100 px-[0.4em] py-[0.1em] text-[0.75em] font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-300"
+      title={note ? `Guests: ${note}` : "Guests"}
+    >
+      <PartyPopper className="size-[1.1em] shrink-0" />
+      <span className="truncate">{note || "Guests"}</span>
+    </div>
   );
 }

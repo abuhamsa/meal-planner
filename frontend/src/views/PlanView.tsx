@@ -1,12 +1,12 @@
 import clsx from "clsx";
-import { ExternalLink, Moon, Plus, Store, Sun } from "lucide-react";
+import { ExternalLink, Moon, PartyPopper, Plus, Store, Sun } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Avatar, Spinner } from "../components/ui";
-import type { Person, PlanEntry, Slot } from "../lib/api";
+import type { Person, PlanEntry, PlanSlot, Slot } from "../lib/api";
 import { SLOTS } from "../lib/api";
 import { formatDayMonth, formatWeekday, isToday, toISO, weekDays } from "../lib/dates";
 import { entryGroupKey, seatsFor, withoutFollowers } from "../lib/plan";
-import { usePeople, usePlan } from "../lib/queries";
+import { slotMap, usePeople, usePlan, usePlanSlots } from "../lib/queries";
 import { MealPicker, type PickerTarget } from "./MealPicker";
 
 const SLOT_META: Record<Slot, { label: string; icon: typeof Sun }> = {
@@ -18,6 +18,8 @@ export function PlanView({ weekStart }: { weekStart: Date }) {
   const start = toISO(weekStart);
   const { data: people = [], isLoading: loadingPeople } = usePeople();
   const { data: entries = [], isLoading: loadingPlan, isPlaceholderData } = usePlan(start);
+  const { data: slotDetails } = usePlanSlots(start);
+  const slotInfo = useMemo(() => slotMap(slotDetails), [slotDetails]);
   const [target, setTarget] = useState<PickerTarget | null>(null);
 
   const byCell = useMemo(() => {
@@ -71,6 +73,7 @@ export function PlanView({ weekStart }: { weekStart: Date }) {
                   slot={slot}
                   people={people}
                   entries={byCell.get(`${iso}|${slot}`) ?? []}
+                  info={slotInfo.get(`${iso}|${slot}`)}
                   dimmed={isPast}
                   onPick={(personIds) => setTarget({ date: iso, slot, personIds })}
                 />
@@ -94,12 +97,14 @@ function SlotCell({
   slot,
   people,
   entries,
+  info,
   dimmed,
   onPick,
 }: {
   slot: Slot;
   people: Person[];
   entries: PlanEntry[];
+  info?: PlanSlot;
   dimmed: boolean;
   onPick: (personIds: number[]) => void;
 }) {
@@ -123,6 +128,15 @@ function SlotCell({
     <div className={clsx("min-w-0", dimmed && "opacity-60 transition-opacity hover:opacity-100")}>
       <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-stone-400">
         <Icon className="size-3.5" /> {label}
+        {info?.guests && (
+          <span
+            className="ml-auto flex min-w-0 items-center gap-1 rounded-md bg-violet-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-300"
+            title={info.guests_note ? `Guests: ${info.guests_note}` : "Guests"}
+          >
+            <PartyPopper className="size-3 shrink-0" />
+            <span className="truncate">{info.guests_note || "Guests"}</span>
+          </span>
+        )}
       </div>
       <div className="flex flex-col gap-1.5">
         {[...groups.entries()].map(([key, { entry, seats: eaters }]) => {

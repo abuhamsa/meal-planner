@@ -6,7 +6,7 @@ from flask import Blueprint, abort, current_app, jsonify, request
 from sqlalchemy import func
 
 from . import __version__
-from .models import SLOTS, Meal, Person, PlanEntry, db
+from .models import SLOTS, Meal, Person, PlanEntry, PlanSlot, db
 
 api = Blueprint("api", __name__, url_prefix="/api")
 
@@ -281,13 +281,17 @@ def delete_meal(meal_id):
 # --- plan -------------------------------------------------------------------
 
 
-@api.get("/plan")
-def get_plan():
+def plan_range():
     start = parse_date(request.args.get("start"), "start")
     days = request.args.get("days", default=7, type=int)
     if not 1 <= days <= MAX_PLAN_DAYS:
         abort(400, f"'days' must be between 1 and {MAX_PLAN_DAYS}")
-    end = start + timedelta(days=days - 1)
+    return start, start + timedelta(days=days - 1)
+
+
+@api.get("/plan")
+def get_plan():
+    start, end = plan_range()
     entries = (
         PlanEntry.query.options(db.joinedload(PlanEntry.meal))
         .filter(PlanEntry.date.between(start, end))
@@ -412,3 +416,38 @@ def delete_plan_entry(entry_id):
     db.session.delete(entry)
     db.session.commit()
     return "", 204
+
+
+@api.get("/plan/slots")
+def get_plan_slots():
+    """Per-slot details (guests) for a date range. Slots without anything set are left out."""
+    start, end = plan_range()
+    slots = PlanSlot.query.filter(PlanSlot.date.between(start, end)).order_by(PlanSlot.date, PlanSlot.slot)
+    return jsonify([s.to_dict() for s in slots])
+
+
+@api.put("/plan/slots")
+def set_plan_slot():
+    """Body: {date, slot, guests: bool, guests_note?}."""
+    data = body()
+    day = parse_date(data.get("date"))
+    slot = data.get("slot")
+    if slot not in SLOTS:
+        abort(400, f"'slot' must be one of {', '.join(SLOTS)}")
+    guests = data.get("guests")
+    if not isinstance(guests, bool):
+        abort(400, "'guests' must be true or false")
+    note = clean_str(data.get("guests_note"), "guests_note", 100) if guests else None
+
+    row = PlanSlot.query.filter_by(date=day, slot=slot).first()
+    if not guests:
+        if row:
+            db.session.delete(row)
+            db.session.commit()
+        return jsonify(date=day.isoformat(), slot=slot, guests=False, guests_note=None)
+    if row is None:
+        row = PlanSlot(date=day, slot=slot)
+        db.session.add(row)
+    row.guests, row.guests_note = True, note
+    db.session.commit()
+    return jsonify(row.to_dict())

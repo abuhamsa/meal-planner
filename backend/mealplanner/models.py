@@ -120,3 +120,23 @@ class PlanEntry(db.Model):
             "note": self.note,
             "meal": self.meal.to_dict() if self.meal else None,
         }
+
+
+class PlanSlot(db.Model):
+    """Things about a whole lunch or dinner, independent of who eats what, e.g. guests."""
+
+    __tablename__ = "plan_slot"
+    __table_args__ = (
+        UniqueConstraint("date", "slot", name="uq_plan_slot_date_slot"),
+        CheckConstraint("slot IN ('lunch', 'dinner')", name="ck_plan_slot_slot"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, index=True)
+    slot = db.Column(db.String(10), nullable=False)
+    guests = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    # Who's coming, e.g. "Müllers".
+    guests_note = db.Column(db.String(100))
+
+    def to_dict(self):
+        return {"date": self.date.isoformat(), "slot": self.slot, "guests": self.guests, "guests_note": self.guests_note}
