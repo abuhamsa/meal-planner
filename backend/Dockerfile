@@ -1,29 +1,28 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
-# Install system dependencies and clean up after
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    FLASK_APP=wsgi.py \
+    DATA_DIR=/app/data
 
-# Create app user and set up working directory
-RUN useradd -m appuser && mkdir /app && chown appuser:appuser /app
-USER appuser
+RUN useradd --create-home --uid 1000 appuser
 WORKDIR /app
 
-# Set up PATH and ensure scripts directory exists
-RUN mkdir -p /home/appuser/.local/bin
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-ENV PATH="/home/appuser/.local/bin:${PATH}"
-# Copy requirements and install dependencies
-COPY --chown=appuser:appuser requirements.txt .
-RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
+COPY --chown=appuser:appuser mealplanner ./mealplanner
+COPY --chown=appuser:appuser migrations ./migrations
+COPY --chown=appuser:appuser wsgi.py entrypoint.sh ./
+RUN chmod +x entrypoint.sh && mkdir -p /app/data && chown appuser:appuser /app/data
 
-# Copy application files and entrypoint
-COPY --chown=appuser:appuser . .
-COPY --chown=appuser:appuser entrypoint.sh /home/appuser/.local/bin/
+USER appuser
+EXPOSE 8000
+VOLUME /app/data
 
-# Make entrypoint executable
-RUN chmod +x /home/appuser/.local/bin/entrypoint.sh
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"
 
-# Set entrypoint and command
-ENTRYPOINT ["/home/appuser/.local/bin/entrypoint.sh"]
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "app:app"]
+ENTRYPOINT ["./entrypoint.sh"]
+# SQLite + several writers is fine with WAL, but keep the worker count small.
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "wsgi:app"]

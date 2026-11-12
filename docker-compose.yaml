@@ -1,40 +1,36 @@
----
+# Meal Planner v2
+#
+# Nothing here publishes a port. SWAG reaches the frontend container over its Docker
+# network, checks the Authentik session, and only then forwards the request. The backend
+# is only on the internal network, so it can't be reached around the proxy.
 services:
   backend:
-    build:
-      context: ./backend
-    image: abuhamsa/meal-planner-backend:latest    
-    ports:
-      - "8000:8000"
-    env_file:
-      - ./backend/.env-prod
+    build: ./backend
+    image: abuhamsa/meal-planner-backend:2
+    restart: unless-stopped
+    environment:
+      AUTH_MODE: proxy
     volumes:
-      - ./backend/data:/app/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3      
+      - ./data:/app/data
     networks:
-      - meal-network
+      - internal
 
   frontend:
-    build: 
-      context: ./frontend
-    image: abuhamsa/meal-planner-frontend:latest  
-    ports:
-      - "80:80"
-      - "5173:443"
-    networks:
-      - meal-network
-    volumes:
-      - ./frontend/runtime-config:/runtime-config
-      - ./frontend/ssl-certs:/etc/nginx/ssl
-    environment:
-      - HTTPS_ENABLED=true
+    build: ./frontend
+    image: abuhamsa/meal-planner-frontend:2
+    # SWAG's proxy conf uses this name as upstream.
+    container_name: meal-planner
+    restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    networks:
+      - internal
+      - swag
 
 networks:
-  meal-network:
-    driver: bridge
+  internal:
+  swag:
+    # The existing Docker network your SWAG container is attached to.
+    external: true
+    name: ${SWAG_NETWORK:-swag}

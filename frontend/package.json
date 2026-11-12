@@ -1,45 +1,33 @@
 {
-  "name": "frontend",
+  "name": "meal-planner-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@date-io/date-fns": "^3.2.0",
-    "@rollup/plugin-commonjs": "^28.0.2",
-    "axios": "^1.7.9",
-    "date-fns": "^3.2.0",
-    "jwt-decode": "^4.0.0",
-    "oidc-client-ts": "^3.1.0",
-    "react": "^19.0.0",
-    "react-datepicker": "^8.0.0",
-    "react-dom": "^19.0.0",
-    "react-modal": "^3.16.3",
-    "react-oidc-context": "^3.2.0",
-    "react-router-dom": "^7.1.5",
-    "vite": "^6.0.11",
-    "vite-plugin-commonjs": "^0.10.4",
-    "vite-plugin-mkcert": "^1.17.6"
+    "@fontsource-variable/inter": "5.3.0",
+    "@tanstack/react-query": "5.105.0",
+    "clsx": "2.1.1",
+    "date-fns": "4.4.0",
+    "lucide-react": "1.63.0",
+    "react": "19.1.10",
+    "react-dom": "19.1.10"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.0.0",
-    "@types/react": "^19.0.8",
-    "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^4.3.4",
-    "eslint": "^9.19.0",
-    "eslint-plugin-react": "^7.37.4",
-    "eslint-plugin-react-hooks": "^5.1.0",
-    "eslint-plugin-react-refresh": "^0.4.18",
-    "postcss": "^8.5.1",
-    "rimraf": "^6.0.1",
-    "tailwindcss": "^4.0.3"
+    "@tailwindcss/vite": "4.3.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2",
+    "vite": "8.3.5"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   }
 }

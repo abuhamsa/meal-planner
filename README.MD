@@ -1,120 +1,130 @@
-# Meal Planner NG 🍽️
+# Meal Planner v2 🍽️
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![React](https://img.shields.io/badge/React-18.2.0-blue)](https://reactjs.org/)
-[![Flask](https://img.shields.io/badge/Flask-2.0.1-green)](https://flask.palletsprojects.com/)
 
-A modern meal planning application with collaborative features and recipe management. Perfect for households managing meals for multiple people.
+A self-hosted weekly meal planner for a household. Meals are saved once in a library and
+reused across the plan, so "Spaghetti Bolognese" is one meal with its recipe link and notes,
+no matter how often you eat it.
 
-![Meal Planner Screenshot](./screenshot.png)
+## Features
 
-## Features ✨
+- **Weekly plan:** lunch and dinner for every day, with week navigation (← / → keys work too)
+  and "Copy last week" to fill empty slots from the previous week.
+- **Reusable meal library:** search as you type, pick an existing meal, or create a new one inline.
+  Meal names are unique (ignoring case), and renaming a meal updates the whole plan.
+- **Per-person plans:** start with two people and add more any time. People who eat the same
+  meal are shown together; anyone can get something different.
+- **Meal details:** recipe link, notes, and favorites, plus how often and when a meal was planned.
+  The library can be sorted A–Z, by most planned, or by recently planned.
+- **Login through your reverse proxy:** no auth code in the app. SWAG + Authentik decide who gets in.
+- Light and dark mode, works on phones, dates formatted in the browser's language.
 
-- **Weekly Meal Overview** 
-  - Intuitive calendar view with week navigation
-  - Current week quick-jump button
-  - German date formatting support
-- **Smart Meal Management**
-  - Separate tracking for two people
-  - Lunch/Dinner differentiation
-  - URL attachment for recipes
-- **Advanced Search**
-  - Typeahead meal suggestions
-  - Cross-meal search (toggleable in settings)
-  - URL domain display in results
-- **Customization**
-  - Rename person labels
-  - Toggle search functionality
-  - Responsive design with Tailwind
-- **Data Safety**
-  - SQLite database persistence
-  - Configurable CORS policies
-  - Proper input validation
+## Architecture
 
-## Tech Stack 💻
+```
+Browser ──HTTPS──▶ SWAG ──(Authentik forward auth)──▶ meal-planner (nginx) ──/api──▶ backend (Flask + SQLite)
+                   checks the session,                serves the React app        internal network only
+                   adds X-authentik-* headers
+```
 
-**Frontend**
-- React 18 + Vite
-- Tailwind CSS + Custom animations
-- React Datepicker
-- Axios for API calls
-- Date-fns for date management
+| Part     | Stack |
+|----------|-------|
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, TanStack Query, served by nginx |
+| Backend  | Flask 3, SQLAlchemy, Flask-Migrate (Alembic), SQLite, gunicorn |
 
-**Backend**
-- Flask 2.0
-- SQLAlchemy ORM
-- Flask-Migrate
-- SQLite (Production-ready DB support via config)
-- CORS security
+### Data model
 
-## Installation 🛠️
+| Table        | Purpose |
+|--------------|---------|
+| `meal`       | A reusable dish: name (unique, case-insensitive), recipe URL, notes, favorite |
+| `person`     | Someone who eats along: name, color, sort position |
+| `plan_entry` | Person × day × slot (lunch/dinner) → meal. One meal per person per slot |
 
-1. **Clone Repository**
+### Authentication
+
+The app has no login of its own. In production (`AUTH_MODE=proxy`) the backend only accepts
+API calls carrying the `X-authentik-username` header, which SWAG sets after Authentik approves
+the session. This is safe **only because the backend can't be reached without going through
+SWAG**: no ports are published, and the backend is only on the internal Docker network. Don't
+add a `ports:` mapping to the backend.
+
+When the Authentik session expires, the frontend notices the redirect on its next API call and
+reloads the page, so you land on the Authentik login.
+
+## Deployment (Docker + SWAG + Authentik)
+
+1. **Authentik:** create a **Proxy Provider** in *Forward auth (single application)* mode with the
+   external host `https://mealplanner.your-domain`, create an **Application** for it, bind the
+   users/groups that may use it, and add it to your outpost (e.g. the embedded outpost).
+2. **SWAG:** copy [`swag/mealplanner.subdomain.conf.sample`](swag/mealplanner.subdomain.conf.sample)
+   to `/config/nginx/proxy-confs/mealplanner.subdomain.conf` and adjust `server_name` if needed.
+   Check that `/config/nginx/authentik-server.conf` points to your Authentik container.
+3. **Start the app** next to SWAG:
    ```bash
-   git clone https://github.com/abuhamsa/meal-planner.git
-   cd meal-planner
+   mkdir -p data              # SQLite lives here; must be writable by uid 1000
+   SWAG_NETWORK=<the docker network SWAG is on> docker compose up -d --build
    ```
-2. **Backend Setup**
-   ```bash
-   cd backend
-   python -m venv venv
-   source venv/bin/activate  # Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
+   `SWAG_NETWORK` defaults to `swag`. Find yours with `docker inspect swag -f '{{json .NetworkSettings.Networks}}'`.
+4. Restart SWAG and open `https://mealplanner.your-domain`.
 
-3. **Frontend Setup**
-   ```bash
-   cd frontend
-   npm install
-   ```
+Database migrations run automatically when the backend container starts. The database is
+stored in `./data/mealplanner.db`; back up that folder.
 
-4. **Environment Variables**
-Create .env in frontend:
-   ```env
-   VITE_API_URL=http://localhost:5000
-   ```
-## Installation 🛠️
-1. **Start Backend**
-    ```bash
-   cd backend
-   flask run --port 5000
-   ```
-2. **Start Frontend**
-    ```bash
-   cd frontend
-   npm run dev
-   ```   
-3. **Enjos**
-   Visit `http://localhost:5173`    
+## Local development
 
-## Configuration ⚙️
+Backend (port 8000, auth disabled):
+```bash
+cd backend
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements-dev.txt
+export FLASK_APP=wsgi.py AUTH_MODE=none
+flask db upgrade && flask seed
+flask run --port 8000 --debug
+```
 
-### Application Settings
-Accessible via the gear icon (bottom-right corner):
-- **Person Labels**  
-  Rename "Person 1" and "Person 2" to custom names (e.g. "Sarah" and "James")
-- **Search Functionality**  
-  Toggle meal search autocomplete feature on/off
-- **Weekly Reset**  
-  Defaults to current week on page reload
+Frontend (port 5173, proxies `/api` to the backend):
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-### Environment Variables
+Tests and checks:
+```bash
+cd backend && pytest
+cd frontend && npm run build   # type-checks and builds
+```
 
-#### Frontend (`.env` file)
-| Variable          | Description                     | Default               |
-|-------------------|---------------------------------|-----------------------|
-| `VITE_API_URL`    | Backend API base URL            | `http://localhost:5000` |
+After changing models: `flask db migrate -m "describe change"` and commit the new file in
+`backend/migrations/versions/`.
 
-#### Backend
-Set via system environment or `.flaskenv`:
-| Variable                   | Description                      | Default               |
-|----------------------------|----------------------------------|-----------------------|
-| `FLASK_ENV`                | Runtime environment              | `development`         |
-| `SQLALCHEMY_DATABASE_URI`  | Database connection string       | `sqlite:///meals.db`  |
-| `CORS_ORIGINS`             | Allowed origins (comma-separated)| `*`                   |
+### Backend configuration
 
-### Database Configuration
-- **Development**: Uses SQLite by default (auto-created in `backend` directory)
-- **Production**: Recommend PostgreSQL/MySQL:
-  ```bash
-  postgresql://user:password@localhost/mydatabase
+| Variable           | Default                | Description |
+|--------------------|------------------------|-------------|
+| `AUTH_MODE`        | `proxy`                | `proxy` requires the proxy's user header; `none` disables checks (dev only) |
+| `AUTH_USER_HEADER` | `X-authentik-username` | Header that carries the logged-in user |
+| `DATA_DIR`         | `backend/data`         | Folder for `mealplanner.db` (`/app/data` in Docker) |
+| `DATABASE_URL`     | –                      | Overrides the SQLite location completely |
+
+## API
+
+All endpoints are under `/api` and use JSON.
+
+| Method & path | Description |
+|---|---|
+| `GET /me` | Logged-in user (from proxy headers) and app version |
+| `GET /people` · `POST /people` · `PATCH /people/:id` · `DELETE /people/:id[?force=true]` | Manage people |
+| `GET /meals?q=&sort=name\|frequent\|recent&limit=` | Search the library, with `usage_count` and `last_planned` |
+| `POST /meals` · `GET/PATCH /meals/:id` · `DELETE /meals/:id[?force=true]` | Manage meals |
+| `GET /plan?start=YYYY-MM-DD&days=7` | Plan entries in a date range |
+| `PUT /plan` | `{date, slot, person_ids, meal_id \| meal_name}`: assign a meal (`meal_name` reuses or creates) |
+| `DELETE /plan/:id` | Remove one entry |
+| `POST /plan/copy` | `{from, to, days=7, overwrite=false}`: copy a range, e.g. last week |
+
+Deleting a person or a meal that's still in the plan returns `409` with `usage_count`. Repeat
+the request with `?force=true` to delete it together with its plan entries.
+
+## License
+
+MIT

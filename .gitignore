@@ -15,3 +15,8 @@ ssl-certs/fullchain.pem
 ssl-certs/privkey.pem
 backend/.env-prod
 .vscode/
+# v2
+/data/
+backend/.pytest_cache/
+frontend/node_modules/
+frontend/dist/
