@@ -78,12 +78,16 @@ class Meal(db.Model):
 
 
 class PlanEntry(db.Model):
-    """One person eats one meal in one slot on one day."""
+    """One person eats one meal in one slot on one day, or eats out (no meal)."""
 
     __tablename__ = "plan_entry"
     __table_args__ = (
         UniqueConstraint("date", "slot", "person_id", name="uq_plan_entry_date_slot_person"),
         CheckConstraint("slot IN ('lunch', 'dinner')", name="ck_plan_entry_slot"),
+        CheckConstraint(
+            "(eating_out = 1 AND meal_id IS NULL AND leftovers = 0) OR (eating_out = 0 AND meal_id IS NOT NULL)",
+            name="ck_plan_entry_meal_or_out",
+        ),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -93,10 +97,14 @@ class PlanEntry(db.Model):
         db.Integer, db.ForeignKey("person.id", ondelete="CASCADE"), nullable=False, index=True
     )
     meal_id = db.Column(
-        db.Integer, db.ForeignKey("meal.id", ondelete="CASCADE"), nullable=False, index=True
+        db.Integer, db.ForeignKey("meal.id", ondelete="CASCADE"), nullable=True, index=True
     )
     # Eating the rest of an earlier meal. Shown as "Leftovers: <meal>" and not counted in stats.
     leftovers = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    # Restaurant, invitation, canteen...: planned, but not a meal from the library.
+    eating_out = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    # Where, for eating out, e.g. "Restaurant Traube".
+    note = db.Column(db.String(100))
 
     person = db.relationship("Person", back_populates="entries")
     meal = db.relationship("Meal", back_populates="entries")
@@ -108,5 +116,7 @@ class PlanEntry(db.Model):
             "slot": self.slot,
             "person_id": self.person_id,
             "leftovers": self.leftovers,
-            "meal": self.meal.to_dict(),
+            "eating_out": self.eating_out,
+            "note": self.note,
+            "meal": self.meal.to_dict() if self.meal else None,
         }

@@ -302,7 +302,7 @@ def set_plan():
     """Assign a meal to one or more people for a date + slot.
 
     Body: {date, slot, person_ids: [..], meal_id} or {..., meal_name} to pick an existing
-    meal by name or create it on the fly.
+    meal by name or create it on the fly, or {..., eating_out: true, note?} for eating out.
     """
     data = body()
     day = parse_date(data.get("date"))
@@ -323,7 +323,16 @@ def set_plan():
     if missing:
         abort(404, f"Unknown person ids: {missing}")
 
-    if data.get("meal_id") is not None:
+    eating_out = data.get("eating_out", False)
+    if not isinstance(eating_out, bool):
+        abort(400, "'eating_out' must be true or false")
+    note = clean_str(data.get("note"), "note", 100) if eating_out else None
+
+    meal = None
+    if eating_out:
+        if data.get("meal_id") is not None or data.get("meal_name") is not None or data.get("leftovers"):
+            abort(400, "Eating out can't be combined with a meal or leftovers")
+    elif data.get("meal_id") is not None:
         if not isinstance(data["meal_id"], int) or isinstance(data["meal_id"], bool):
             abort(400, "'meal_id' must be an integer")
         meal = get_or_404(Meal, data["meal_id"])
@@ -348,10 +357,10 @@ def set_plan():
     }
     for pid in person_ids:
         entry = existing.get(pid)
-        if entry:
-            entry.meal, entry.leftovers = meal, leftovers
-        else:
-            db.session.add(PlanEntry(date=day, slot=slot, person_id=pid, meal=meal, leftovers=leftovers))
+        if entry is None:
+            entry = PlanEntry(date=day, slot=slot, person_id=pid)
+            db.session.add(entry)
+        entry.meal, entry.leftovers, entry.eating_out, entry.note = meal, leftovers, eating_out, note
     db.session.commit()
 
     entries = PlanEntry.query.filter(PlanEntry.date == day, PlanEntry.slot == slot).all()
@@ -385,6 +394,7 @@ def previous_meal():
     entry = (
         PlanEntry.query.filter(
             PlanEntry.person_id.in_(person_ids),
+            PlanEntry.meal_id.is_not(None),  # eating out leaves nothing over
             PlanEntry.date >= day - timedelta(days=LEFTOVER_LOOKBACK_DAYS),
             before,
         )

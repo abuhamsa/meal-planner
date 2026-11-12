@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { Check, ExternalLink, Plus, Search, Soup, Star, Trash2 } from "lucide-react";
+import { Check, ExternalLink, Plus, Search, Soup, Star, Store, Trash2 } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Avatar, Button, Dialog, Spinner } from "../components/ui";
 import type { Meal, Person, PlanEntry, Slot } from "../lib/api";
@@ -68,7 +68,7 @@ function PickerBody({
   const [pendingEnter, setPendingEnter] = useState(false);
 
   const selectedEntries = entries.filter((e) => selected.includes(e.person_id));
-  const currentMealIds = new Set(selectedEntries.filter((e) => !e.leftovers).map((e) => e.meal.id));
+  const currentMealIds = new Set(selectedEntries.flatMap((e) => (e.meal && !e.leftovers ? [e.meal.id] : [])));
   const seats = seatsFor(people, entries);
   const nameOf = (id: number | null) => people.find((p) => p.id === id)?.name ?? "";
   // Selected kids who would stop eating along with the person they follow.
@@ -87,6 +87,18 @@ function PickerBody({
     if (!leftoverMeal || !selected.length || assign.isPending) return;
     assign.mutate(
       { date: target.date, slot: target.slot, person_ids: selected, meal_id: leftoverMeal.id, leftovers: true },
+      { onSuccess: onDone },
+    );
+  };
+
+  // Eating out: prefill the place when the selected people already eat out here.
+  const currentOut = selectedEntries.find((e) => e.eating_out);
+  const [outOpen, setOutOpen] = useState(false);
+  const [outNote, setOutNote] = useState(currentOut?.note ?? "");
+  const chooseEatingOut = () => {
+    if (!selected.length || assign.isPending) return;
+    assign.mutate(
+      { date: target.date, slot: target.slot, person_ids: selected, eating_out: true, note: outNote.trim() || null },
       { onSuccess: onDone },
     );
   };
@@ -238,6 +250,52 @@ function PickerBody({
           </span>
         </button>
       )}
+
+      {!query &&
+        (outOpen ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              chooseEatingOut();
+            }}
+            className="-mt-1 flex items-center gap-2 rounded-xl bg-sky-50 p-2 ring-1 ring-sky-200/80 dark:bg-sky-950/30 dark:ring-sky-800/50"
+          >
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-200/70 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300">
+              <Store className="size-4" />
+            </span>
+            <input
+              autoFocus
+              value={outNote}
+              maxLength={100}
+              onChange={(e) => setOutNote(e.target.value)}
+              placeholder="Where? (optional)"
+              aria-label="Where are you eating?"
+              className="h-9 min-w-0 flex-1 rounded-lg bg-white px-2.5 text-sm outline-none ring-1 ring-sky-200 focus:ring-2 focus:ring-sky-500 dark:bg-stone-900 dark:ring-sky-800"
+            />
+            <Button type="submit" size="sm" variant="primary" disabled={assign.isPending}>
+              Save
+            </Button>
+          </form>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setOutOpen(true)}
+            className={clsx(
+              "flex cursor-pointer items-center gap-3 rounded-xl bg-sky-50 px-3 py-2.5 text-left ring-1 ring-sky-200/80 transition hover:bg-sky-100 dark:bg-sky-950/30 dark:ring-sky-800/50 dark:hover:bg-sky-950/60",
+              !leftoverMeal && "-mt-1",
+            )}
+          >
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-200/70 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300">
+              <Store className="size-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium">
+                {currentOut ? `Eating out${currentOut.note ? `: ${currentOut.note}` : ""}` : "Eating out"}
+              </span>
+              <span className="block text-xs text-stone-500">Restaurant, invitation… doesn't count as a meal</span>
+            </span>
+          </button>
+        ))}
 
       <ul ref={listRef} id="meal-options" role="listbox" className="-mx-2 max-h-80 overflow-y-auto">
         {!query && meals.length > 0 && (

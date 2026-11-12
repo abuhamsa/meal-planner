@@ -32,5 +32,11 @@ export function withoutFollowers(people: Person[], ids: number[]): number[] {
   return result.length ? result : ids;
 }
 
-export const mealLabel = (entry: Pick<PlanEntry, "leftovers" | "meal">) =>
-  entry.leftovers ? `Leftovers: ${entry.meal.name}` : entry.meal.name;
+export function mealLabel(entry: Pick<PlanEntry, "leftovers" | "meal" | "eating_out" | "note">) {
+  if (entry.eating_out || !entry.meal) return entry.note ? `Eating out: ${entry.note}` : "Eating out";
+  return entry.leftovers ? `Leftovers: ${entry.meal.name}` : entry.meal.name;
+}
+
+/** Entries that look the same on the plan share one card. */
+export const entryGroupKey = (entry: PlanEntry) =>
+  entry.eating_out || !entry.meal ? `out|${entry.note ?? ""}` : `${entry.meal.id}|${entry.leftovers}`;

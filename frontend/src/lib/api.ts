@@ -26,7 +26,10 @@ export interface PlanEntry {
   slot: Slot;
   person_id: number;
   leftovers: boolean;
-  meal: Meal;
+  /** Eating out (restaurant, invitation...): no meal, optional note with the place. */
+  eating_out: boolean;
+  note: string | null;
+  meal: Meal | null;
 }
 
 export interface AssignInput {
@@ -36,6 +39,8 @@ export interface AssignInput {
   meal_id?: number;
   meal_name?: string;
   leftovers?: boolean;
+  eating_out?: boolean;
+  note?: string | null;
 }
 
 export interface Me {

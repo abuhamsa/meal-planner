@@ -1,11 +1,11 @@
 import clsx from "clsx";
-import { ExternalLink, Moon, Plus, Sun } from "lucide-react";
+import { ExternalLink, Moon, Plus, Store, Sun } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Avatar, Spinner } from "../components/ui";
 import type { Person, PlanEntry, Slot } from "../lib/api";
 import { SLOTS } from "../lib/api";
 import { formatDayMonth, formatWeekday, isToday, toISO, weekDays } from "../lib/dates";
-import { seatsFor, withoutFollowers } from "../lib/plan";
+import { entryGroupKey, seatsFor, withoutFollowers } from "../lib/plan";
 import { usePeople, usePlan } from "../lib/queries";
 import { MealPicker, type PickerTarget } from "./MealPicker";
 
@@ -110,7 +110,7 @@ function SlotCell({
   const groups = new Map<string, { entry: PlanEntry; seats: typeof seats }>();
   for (const seat of seats) {
     if (!seat.entry) continue;
-    const key = `${seat.entry.meal.id}|${seat.entry.leftovers}`;
+    const key = entryGroupKey(seat.entry);
     const g = groups.get(key) ?? { entry: seat.entry, seats: [] };
     g.seats.push(seat);
     groups.set(key, g);
@@ -135,7 +135,12 @@ function SlotCell({
             tabIndex={0}
             onClick={pick}
             onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), pick())}
-            className="group flex cursor-pointer items-center gap-2.5 rounded-xl bg-stone-50 px-2.5 py-2 ring-1 ring-stone-200/70 transition hover:bg-brand-50 hover:ring-brand-200 dark:bg-stone-800/60 dark:ring-stone-700/60 dark:hover:bg-brand-900/30 dark:hover:ring-brand-700/50"
+            className={clsx(
+              "group flex cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 ring-1 transition",
+              meal
+                ? "bg-stone-50 ring-stone-200/70 hover:bg-brand-50 hover:ring-brand-200 dark:bg-stone-800/60 dark:ring-stone-700/60 dark:hover:bg-brand-900/30 dark:hover:ring-brand-700/50"
+                : "bg-sky-50/70 ring-sky-200/70 hover:bg-sky-100/70 hover:ring-sky-300 dark:bg-sky-950/30 dark:ring-sky-800/50 dark:hover:bg-sky-950/50",
+            )}
           >
             {people.length > 1 && (
               <span className="flex -space-x-1.5">
@@ -156,9 +161,18 @@ function SlotCell({
                   Leftovers
                 </span>
               )}
-              <span className="truncate text-sm font-medium">{meal.name}</span>
+              {meal ? (
+                <span className="truncate text-sm font-medium">{meal.name}</span>
+              ) : (
+                <>
+                  <Store className="size-4 shrink-0 text-sky-600 dark:text-sky-400" />
+                  <span className="truncate text-sm font-medium text-sky-900 dark:text-sky-200">
+                    {entry.note || "Eating out"}
+                  </span>
+                </>
+              )}
             </span>
-            {meal.recipe_url && (
+            {meal?.recipe_url && (
               <a
                 href={meal.recipe_url}
                 target="_blank"

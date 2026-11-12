@@ -289,3 +289,54 @@ def test_migrations_keep_existing_data(tmp_path):
         assert sqlite3.connect(db_file).execute("select count(*) from plan_entry").fetchone()[0] == 1
         downgrade(directory=migrations, revision="abce87011c71")
         assert sqlite3.connect(db_file).execute("select count(*) from plan_entry").fetchone()[0] == 1
+
+
+# --- eating out -------------------------------------------------------------
+
+
+def test_eating_out_entry(client):
+    p1, p2 = people_ids(client)
+    res = client.put(
+        "/api/plan",
+        json={"date": "2026-11-12", "slot": "dinner", "person_ids": [p1, p2], "eating_out": True, "note": "  Restaurant Traube "},
+    )
+    assert res.status_code == 200
+    assert [(e["eating_out"], e["note"], e["meal"]) for e in res.json] == [(True, "Restaurant Traube", None)] * 2
+    assert client.get("/api/meals").json == []  # no meal is created
+
+    # Switching to a real meal clears eating out and the note.
+    res = client.put("/api/plan", json={"date": "2026-11-12", "slot": "dinner", "person_ids": [p1], "meal_name": "Soup"})
+    mine = next(e for e in res.json if e["person_id"] == p1)
+    assert (mine["eating_out"], mine["note"], mine["meal"]["name"]) == (False, None, "Soup")
+
+
+def test_eating_out_without_note_and_validation(client):
+    p1, _ = people_ids(client)
+    base = {"date": "2026-11-12", "slot": "lunch", "person_ids": [p1]}
+    assert client.put("/api/plan", json={**base, "eating_out": True}).json[0]["note"] is None
+    assert client.put("/api/plan", json={**base, "eating_out": True, "meal_name": "X"}).status_code == 400
+    assert client.put("/api/plan", json={**base, "eating_out": True, "leftovers": True}).status_code == 400
+    assert client.put("/api/plan", json={**base, "eating_out": "yes"}).status_code == 400
+    assert client.put("/api/plan", json={**base, "eating_out": True, "note": "x" * 101}).status_code == 400
+
+
+def test_eating_out_is_not_counted_and_not_leftovers(client):
+    p1, _ = people_ids(client)
+    meal = client.put("/api/plan", json={"date": "2026-11-10", "slot": "dinner", "person_ids": [p1], "meal_name": "Curry"}).json[0]["meal"]
+    client.put("/api/plan", json={"date": "2026-11-11", "slot": "dinner", "person_ids": [p1], "eating_out": True})
+
+    assert client.get(f"/api/meals/{meal['id']}").json["usage_count"] == 1
+    prev = client.get(f"/api/plan/previous?date=2026-11-12&slot=lunch&person_ids={p1}").json
+    assert prev["meal"]["name"] == "Curry"  # skips the restaurant visit
+
+
+def test_db_rejects_entry_without_meal_unless_eating_out(app):
+    import sqlalchemy
+    from datetime import date
+
+    from mealplanner.models import PlanEntry
+
+    with app.app_context():
+        db.session.add(PlanEntry(date=date(2026, 11, 12), slot="lunch", person_id=1, meal_id=None))
+        with pytest.raises(sqlalchemy.exc.IntegrityError):
+            db.session.commit()
