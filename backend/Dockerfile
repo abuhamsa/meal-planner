@@ -17,6 +17,12 @@ COPY --chown=appuser:appuser wsgi.py entrypoint.sh ./
 RUN chmod +x entrypoint.sh && mkdir -p /app/data && chown appuser:appuser /app/data
 
 USER appuser
+
+# Shown in the app footer; CI passes the Git tag or branch + commit. Late in the file so a new
+# version doesn't invalidate the cached layers above.
+ARG APP_VERSION=dev
+ENV APP_VERSION=$APP_VERSION
+
 EXPOSE 8000
 VOLUME /app/data
 

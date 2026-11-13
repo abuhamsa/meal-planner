@@ -99,7 +99,7 @@ export function PeopleView() {
 
       {me && (
         <p className="mt-10 text-center text-xs text-stone-400">
-          Signed in as {me.user.name} via Authentik · v{me.version}
+          Signed in as {me.user.name} via Authentik · {/^\d/.test(me.version) ? `v${me.version}` : me.version}
         </p>
       )}
     </div>

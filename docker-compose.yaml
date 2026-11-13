@@ -5,7 +5,11 @@
 # is only on the internal network, so it can't be reached around the proxy.
 services:
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      # Optional, shown in the app footer: APP_VERSION=$(git describe --tags) docker compose build
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
     image: abuhamsa/meal-planner-backend:2
     restart: unless-stopped
     environment:

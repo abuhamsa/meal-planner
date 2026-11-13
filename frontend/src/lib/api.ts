@@ -75,6 +75,7 @@ export interface AssignInput {
 
 export interface Me {
   user: { username: string; name: string; email: string | null };
+  /** "2.1.0" for a release, "main-abc1234" for other builds, "dev" locally. */
   version: string;
 }
 

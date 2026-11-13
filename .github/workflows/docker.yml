@@ -4,6 +4,9 @@
 # - Push to main: images are pushed as `main`, `latest` and `sha-<commit>`.
 # - Tag vX.Y.Z:    images are pushed as `X.Y.Z`, `X.Y` and `X` (docker-compose.yaml uses `2`).
 #
+# The app shows its version in the footer of the People page: `X.Y.Z` for tags, otherwise
+# `<branch>-<commit>` (e.g. `main-abc1234`). Nothing to edit by hand, the tag is the version.
+#
 # Images go to GitHub (ghcr.io/abuhamsa/meal-planner-*) and Docker Hub (abuhamsa/meal-planner-*).
 # Docker Hub needs two repository secrets: DOCKERHUB_USERNAME and DOCKERHUB_TOKEN (an access
 # token with read/write scope, from Docker Hub > Account settings > Personal access tokens).
@@ -101,6 +104,16 @@ jobs:
             type=semver,pattern={{major}}
             type=sha,enable=${{ github.event_name != 'pull_request' }}
 
+      - name: Version shown in the app
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="${GITHUB_REF_NAME//\//-}-${GITHUB_SHA::7}"
+          fi
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
@@ -109,5 +122,7 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Only the backend reports the version (GET /api/me).
+          build-args: ${{ matrix.component == 'backend' && format('APP_VERSION={0}', steps.version.outputs.value) || '' }}
           cache-from: type=gha,scope=${{ matrix.component }}
           cache-to: type=gha,mode=max,scope=${{ matrix.component }}
