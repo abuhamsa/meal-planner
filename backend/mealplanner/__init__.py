@@ -12,7 +12,9 @@ from werkzeug.exceptions import HTTPException
 
 from .models import Person, db
 
-__version__ = "2.0.0"
+# Set at image build time from the Git tag (e.g. "2.1.0") or branch + commit ("main-abc1234"),
+# see .github/workflows/docker.yml. "dev" when running from a checkout.
+__version__ = os.environ.get("APP_VERSION") or "dev"
 
 migrate = Migrate()
 

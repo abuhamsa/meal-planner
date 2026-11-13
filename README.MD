@@ -83,7 +83,8 @@ GitHub (`ghcr.io/abuhamsa/meal-planner-*`):
 | `2`, `2.0`, `2.0.0` | tag `v2.0.0` (compose uses `2`) |
 | `sha-<commit>`   | every push, for rollbacks          |
 
-To release: `git tag v2.1.0 && git push origin v2.1.0`.
+To release: `git tag v2.2.0 && git push origin v2.2.0`. The tag is also the version shown in the
+app (People page footer); builds from `main` show `main-<commit>`, a local checkout shows `dev`.
 
 Database migrations run automatically when the backend container starts. The database is
 stored in `./data/mealplanner.db`; back up that folder.
