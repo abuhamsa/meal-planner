@@ -64,7 +64,25 @@ reloads the page, so you land on the Authentik login.
    SWAG_NETWORK=<the docker network SWAG is on> docker compose up -d --build
    ```
    `SWAG_NETWORK` defaults to `swag`. Find yours with `docker inspect swag -f '{{json .NetworkSettings.Networks}}'`.
+
+   Instead of building on the server, you can use the prebuilt images (see below):
+   `docker compose pull && docker compose up -d`.
 4. Restart SWAG and open `https://mealplanner.your-domain`.
+
+### Prebuilt images
+
+GitHub Actions ([`.github/workflows/docker.yml`](.github/workflows/docker.yml)) runs the tests
+and builds both images (linux/amd64) on every push and pull request. Pushes to `main` and
+version tags publish them to Docker Hub (`abuhamsa/meal-planner-backend`, `-frontend`) and
+GitHub (`ghcr.io/abuhamsa/meal-planner-*`):
+
+| Tag              | Updated by                         |
+| ---------------- | ---------------------------------- |
+| `latest`, `main` | every push to `main`               |
+| `2`, `2.0`, `2.0.0` | tag `v2.0.0` (compose uses `2`) |
+| `sha-<commit>`   | every push, for rollbacks          |
+
+To release: `git tag v2.1.0 && git push origin v2.1.0`.
 
 Database migrations run automatically when the backend container starts. The database is
 stored in `./data/mealplanner.db`; back up that folder.
