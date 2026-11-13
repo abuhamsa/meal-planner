@@ -321,7 +321,7 @@ def import_recipe(meal):
 def get_recipe(meal_id):
     meal = get_or_404(Meal, meal_id)
     if meal.recipe is None:
-        abort(404, f"'{meal.name}' has no imported recipe")
+        abort(404, f"'{meal.name}' has no saved recipe")
     return jsonify(meal.recipe.to_dict())
 
 
@@ -334,6 +334,56 @@ def create_recipe(meal_id):
     except RecipeImportError as e:
         db.session.rollback()
         return jsonify(error=f"Couldn't import the recipe: {e}"), 422
+    return jsonify(recipe.to_dict())
+
+
+def clean_lines(value, field, max_items, max_len):
+    """A list of non-empty strings; blank entries are dropped."""
+    if not isinstance(value, list) or len(value) > max_items:
+        abort(400, f"'{field}' must be a list of at most {max_items} entries")
+    lines = [clean_str(line, field, max_len) for line in value]
+    return [line for line in lines if line]
+
+
+def clean_minutes(value, field):
+    if value is None:
+        return None
+    if not isinstance(value, int) or isinstance(value, bool) or not 0 < value <= 10000:
+        abort(400, f"'{field}' must be a number of minutes between 1 and 10000")
+    return value
+
+
+@api.put("/meals/<int:meal_id>/recipe")
+def save_recipe(meal_id):
+    """Write a recipe by hand, or edit a saved one. The picture and source link of an imported
+    recipe are kept. Re-importing (POST) replaces hand-made changes."""
+    meal = get_or_404(Meal, meal_id)
+    data = body()
+
+    groups_in = data.get("ingredient_groups", [])
+    if not isinstance(groups_in, list) or len(groups_in) > 30:
+        abort(400, "'ingredient_groups' must be a list of at most 30 groups")
+    groups = []
+    for group in groups_in:
+        if not isinstance(group, dict):
+            abort(400, "'ingredient_groups' entries must be objects")
+        ingredients = clean_lines(group.get("ingredients", []), "ingredients", 200, 500)
+        if ingredients:
+            groups.append({"purpose": clean_str(group.get("purpose"), "purpose", 200), "ingredients": ingredients})
+    instructions = clean_lines(data.get("instructions", []), "instructions", 100, 5000)
+    if not groups and not instructions:
+        abort(400, "Add at least one ingredient or step")
+
+    recipe = meal.recipe or Recipe(meal=meal)
+    recipe.yields = clean_str(data.get("yields"), "yields", 100)
+    # One time field when writing by hand; it replaces the prep/cook split of an import.
+    recipe.total_time = clean_minutes(data.get("total_time"), "total_time")
+    recipe.prep_time = recipe.cook_time = None
+    recipe.ingredient_groups = groups
+    recipe.instructions = instructions
+    recipe.imported_at = recipe.imported_at or utcnow()
+    db.session.add(recipe)
+    db.session.commit()
     return jsonify(recipe.to_dict())
 
 

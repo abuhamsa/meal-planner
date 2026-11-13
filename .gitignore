@@ -21,3 +21,8 @@ backend/.pytest_cache/
 frontend/node_modules/
 frontend/dist/
 backend/data/
+# Personal SWAG configs (real domains); only the .sample is tracked
+swag/*.conf
+frontend/eat.subdomain.conf
+*:Zone.Identifier
+deploy/

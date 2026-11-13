@@ -182,3 +182,82 @@ def test_fetch_blocks_private_addresses(url):
 def test_decode_prefers_utf8_without_charset():
     assert recipe_import._decode("Rösti".encode(), "text/html") == "Rösti"
     assert recipe_import._decode("Rösti".encode("latin-1"), "text/html; charset=iso-8859-1") == "Rösti"
+
+
+# --- recipes written by hand --------------------------------------------------
+
+MANUAL = {
+    "yields": " 4 Portionen ",
+    "total_time": 50,
+    "ingredient_groups": [
+        {"purpose": None, "ingredients": ["500 g Spaghetti", "  ", "Salz"]},
+        {"purpose": "Für die Sauce", "ingredients": ["400 g Tomaten"]},
+        {"purpose": "Leer", "ingredients": [""]},
+    ],
+    "instructions": ["Wasser kochen.", "", "Sauce köcheln lassen."],
+}
+
+
+def test_write_recipe_by_hand(client):
+    meal = client.post("/api/meals", json={"name": "Spaghetti"}).json
+    res = client.put(f"/api/meals/{meal['id']}/recipe", json=MANUAL)
+    assert res.status_code == 200, res.json
+    recipe = res.json
+    assert recipe["source_url"] is None and recipe["image_url"] is None
+    assert recipe["yields"] == "4 Portionen"
+    assert recipe["total_time"] == 50
+    # Blank lines and empty groups are dropped.
+    assert recipe["ingredient_groups"] == [
+        {"purpose": None, "ingredients": ["500 g Spaghetti", "Salz"]},
+        {"purpose": "Für die Sauce", "ingredients": ["400 g Tomaten"]},
+    ]
+    assert recipe["instructions"] == ["Wasser kochen.", "Sauce köcheln lassen."]
+    assert client.get(f"/api/meals/{meal['id']}").json["has_recipe"] is True
+    assert client.get(f"/api/meals/{meal['id']}/recipe").json == recipe
+
+
+def test_editing_an_imported_recipe_keeps_picture_and_source(client, pages):
+    pages["https://example.com/roesti"] = ("text/html", RECIPE_PAGE)
+    pages["https://example.com/img/roesti.jpg"] = ("image/jpeg", jpeg_bytes())
+    meal = make_meal(client)
+    imported = client.post(f"/api/meals/{meal['id']}/recipe", json={}).json
+
+    res = client.put(
+        f"/api/meals/{meal['id']}/recipe",
+        json={"yields": "2 Portionen", "total_time": None, "ingredient_groups": [{"ingredients": ["400 g Kartoffeln"]}], "instructions": ["Braten."]},
+    )
+    assert res.status_code == 200, res.json
+    edited = res.json
+    assert edited["image_url"] == imported["image_url"]
+    assert edited["source_url"] == "https://example.com/roesti"
+    assert edited["title"] == "Berner Rösti"
+    assert edited["total_time"] is None and edited["prep_time"] is None
+    assert edited["ingredient_groups"] == [{"purpose": None, "ingredients": ["400 g Kartoffeln"]}]
+    assert client.get(edited["image_url"]).status_code == 200
+
+
+@pytest.mark.parametrize(
+    "payload, message",
+    [
+        ({"ingredient_groups": [], "instructions": ["  "]}, "Add at least one ingredient or step"),
+        ({"instructions": "Kochen"}, "'instructions' must be a list"),
+        ({"instructions": [1]}, "'instructions' must be a string"),
+        ({"instructions": ["x" * 5001]}, "at most 5000 characters"),
+        ({"instructions": ["x"] * 101}, "at most 100 entries"),
+        ({"ingredient_groups": ["Salz"]}, "entries must be objects"),
+        ({"instructions": ["x"], "total_time": "30"}, "'total_time' must be a number"),
+        ({"instructions": ["x"], "total_time": 0}, "'total_time' must be a number"),
+        ({"instructions": ["x"], "total_time": True}, "'total_time' must be a number"),
+    ],
+)
+def test_manual_recipe_validation(client, payload, message):
+    meal = client.post("/api/meals", json={"name": "Spaghetti"}).json
+    res = client.put(f"/api/meals/{meal['id']}/recipe", json=payload)
+    assert res.status_code == 400
+    assert message in res.json["error"]
+    assert client.get(f"/api/meals/{meal['id']}").json["has_recipe"] is False
+
+
+def test_manual_recipe_needs_auth_and_meal(app, client):
+    assert app.test_client().put("/api/meals/1/recipe", json=MANUAL).status_code == 401
+    assert client.put("/api/meals/999/recipe", json=MANUAL).status_code == 404
