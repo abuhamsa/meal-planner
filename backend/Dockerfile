@@ -25,4 +25,5 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
 
 ENTRYPOINT ["./entrypoint.sh"]
 # SQLite + several writers is fine with WAL, but keep the worker count small.
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "wsgi:app"]
+# Recipe imports fetch a page and an image from other sites, which can take a while.
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "90", "wsgi:app"]

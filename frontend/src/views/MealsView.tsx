@@ -1,11 +1,12 @@
 import clsx from "clsx";
-import { ChefHat, ExternalLink, Plus, Search, Star } from "lucide-react";
+import { BookOpen, ChefHat, ExternalLink, Plus, Search, Star } from "lucide-react";
 import { useDeferredValue, useState } from "react";
 import { Button, Spinner } from "../components/ui";
 import type { Meal } from "../lib/api";
 import { formatRelativeDay, hostname } from "../lib/dates";
 import { useMeals, useToggleFavorite } from "../lib/queries";
 import { MealDialog } from "./MealDialog";
+import { RecipeDialog } from "./RecipeDialog";
 
 type Sort = "name" | "frequent" | "recent";
 const SORTS: { value: Sort; label: string }[] = [
@@ -18,6 +19,7 @@ export function MealsView() {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Sort>("name");
   const [editing, setEditing] = useState<Partial<Meal> | null>(null);
+  const [recipeFor, setRecipeFor] = useState<Meal | null>(null);
   const q = useDeferredValue(query.trim());
   const { data: meals = [], isLoading, isPlaceholderData } = useMeals({ q: q || undefined, sort });
   const toggleFavorite = useToggleFavorite();
@@ -109,7 +111,18 @@ export function MealsView() {
                     {meal.usage_count ? `${meal.usage_count}× planned` : "Not planned yet"}
                     {meal.last_planned && ` · ${formatRelativeDay(meal.last_planned)}`}
                   </span>
-                  {meal.recipe_url && (
+                  {meal.has_recipe ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRecipeFor(meal);
+                      }}
+                      className="ml-auto inline-flex cursor-pointer items-center gap-1 rounded-md bg-emerald-100 px-1.5 py-0.5 font-medium text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-200 dark:hover:bg-emerald-900/70"
+                    >
+                      <BookOpen className="size-3 shrink-0" /> Recipe
+                    </button>
+                  ) : meal.recipe_url && (
                     <a
                       href={meal.recipe_url}
                       target="_blank"
@@ -129,6 +142,7 @@ export function MealsView() {
       )}
 
       <MealDialog meal={editing} onClose={() => setEditing(null)} />
+      <RecipeDialog meal={recipeFor} onClose={() => setRecipeFor(null)} />
     </>
   );
 }

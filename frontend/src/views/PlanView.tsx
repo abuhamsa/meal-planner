@@ -1,13 +1,14 @@
 import clsx from "clsx";
-import { ExternalLink, Moon, PartyPopper, Plus, Store, Sun } from "lucide-react";
+import { BookOpen, ExternalLink, Moon, PartyPopper, Plus, Store, Sun } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Avatar, Spinner } from "../components/ui";
-import type { Person, PlanEntry, PlanSlot, Slot } from "../lib/api";
+import type { Meal, Person, PlanEntry, PlanSlot, Slot } from "../lib/api";
 import { SLOTS } from "../lib/api";
 import { formatDayMonth, formatWeekday, isToday, toISO, weekDays } from "../lib/dates";
 import { entryGroupKey, seatsFor, withoutFollowers } from "../lib/plan";
 import { slotMap, usePeople, usePlan, usePlanSlots } from "../lib/queries";
 import { MealPicker, type PickerTarget } from "./MealPicker";
+import { RecipeDialog } from "./RecipeDialog";
 
 const SLOT_META: Record<Slot, { label: string; icon: typeof Sun }> = {
   lunch: { label: "Lunch", icon: Sun },
@@ -21,6 +22,7 @@ export function PlanView({ weekStart }: { weekStart: Date }) {
   const { data: slotDetails } = usePlanSlots(start);
   const slotInfo = useMemo(() => slotMap(slotDetails), [slotDetails]);
   const [target, setTarget] = useState<PickerTarget | null>(null);
+  const [recipeFor, setRecipeFor] = useState<Meal | null>(null);
 
   const byCell = useMemo(() => {
     const map = new Map<string, PlanEntry[]>();
@@ -76,6 +78,7 @@ export function PlanView({ weekStart }: { weekStart: Date }) {
                   info={slotInfo.get(`${iso}|${slot}`)}
                   dimmed={isPast}
                   onPick={(personIds) => setTarget({ date: iso, slot, personIds })}
+                  onRecipe={setRecipeFor}
                 />
               ))}
             </section>
@@ -89,6 +92,7 @@ export function PlanView({ weekStart }: { weekStart: Date }) {
         entries={target ? (byCell.get(`${target.date}|${target.slot}`) ?? []) : []}
         onClose={() => setTarget(null)}
       />
+      <RecipeDialog meal={recipeFor} onClose={() => setRecipeFor(null)} />
     </>
   );
 }
@@ -100,6 +104,7 @@ function SlotCell({
   info,
   dimmed,
   onPick,
+  onRecipe,
 }: {
   slot: Slot;
   people: Person[];
@@ -107,6 +112,7 @@ function SlotCell({
   info?: PlanSlot;
   dimmed: boolean;
   onPick: (personIds: number[]) => void;
+  onRecipe: (meal: Meal) => void;
 }) {
   const { label, icon: Icon } = SLOT_META[slot];
 
@@ -186,7 +192,21 @@ function SlotCell({
                 </>
               )}
             </span>
-            {meal?.recipe_url && (
+            {meal?.has_recipe ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRecipe(meal);
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+                className="-m-1.5 cursor-pointer rounded-md p-1.5 text-emerald-600 hover:bg-white hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-stone-900"
+                title="Show recipe"
+                aria-label={`Show recipe for ${meal.name}`}
+              >
+                <BookOpen className="size-4" />
+              </button>
+            ) : meal?.recipe_url && (
               <a
                 href={meal.recipe_url}
                 target="_blank"

@@ -1,8 +1,8 @@
 import clsx from "clsx";
-import { ChevronLeft, ChevronRight, Moon, PartyPopper, Pencil, Soup, Store, Sun } from "lucide-react";
+import { BookOpen, ChevronLeft, ChevronRight, Moon, PartyPopper, Pencil, Soup, Store, Sun } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Spinner } from "../components/ui";
-import type { Person, PlanEntry, PlanSlot, Slot } from "../lib/api";
+import type { Meal, Person, PlanEntry, PlanSlot, Slot } from "../lib/api";
 import { SLOTS } from "../lib/api";
 import {
   addDays,
@@ -18,6 +18,7 @@ import {
 } from "../lib/dates";
 import { entryGroupKey, seatsFor, type Seat } from "../lib/plan";
 import { slotMap, usePeople, usePlan, usePlanSlots } from "../lib/queries";
+import { RecipeDialog } from "./RecipeDialog";
 
 const SLOT_META: Record<Slot, { label: string; icon: typeof Sun }> = {
   lunch: { label: "Lunch", icon: Sun },
@@ -36,6 +37,7 @@ function weekFromUrl() {
  */
 export function WeekOverview() {
   const [week, setWeek] = useState(weekFromUrl);
+  const [recipeFor, setRecipeFor] = useState<Meal | null>(null);
   const start = toISO(week);
   const isCurrentWeek = start === toISO(getWeekStart(new Date()));
   const { data: people = [], isLoading: loadingPeople } = usePeople();
@@ -61,7 +63,7 @@ export function WeekOverview() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.metaKey || e.ctrlKey || e.altKey || document.querySelector("dialog[open]")) return;
       if (e.key === "ArrowLeft") go(-1);
       if (e.key === "ArrowRight") go(1);
     };
@@ -96,10 +98,12 @@ export function WeekOverview() {
       layout={layout}
       info={slotInfo.get(`${toISO(day)}|${slot}`)}
       seats={seatsFor(people, byCell.get(`${toISO(day)}|${slot}`) ?? [])}
+      onRecipe={setRecipeFor}
     />
   );
 
   return (
+    <>
     <div
       className="flex h-dvh flex-col overflow-hidden px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top))] md:px-6"
       onTouchStart={onTouchStart}
@@ -197,6 +201,9 @@ export function WeekOverview() {
         </main>
       )}
     </div>
+    {/* Outside the swipe area, so swiping inside the recipe doesn't change the week. */}
+    <RecipeDialog meal={recipeFor} onClose={() => setRecipeFor(null)} />
+    </>
   );
 }
 
@@ -344,12 +351,14 @@ function Cell({
   layout,
   info,
   seats,
+  onRecipe,
 }: {
   people: Person[];
   short: Map<number, string>;
   layout: Layout;
   info?: PlanSlot;
   seats: Seat[];
+  onRecipe: (meal: Meal) => void;
 }) {
   const guests = info?.guests ? <GuestsLine note={info.guests_note} /> : null;
   const groups = new Map<string, { entry: PlanEntry; people: Person[] }>();
@@ -415,7 +424,18 @@ function Cell({
                     <title>Leftovers</title>
                   </Soup>
                 )}
-                {entry.meal.name}
+                {entry.meal.has_recipe ? (
+                  <button
+                    type="button"
+                    onClick={() => onRecipe(entry.meal!)}
+                    className="cursor-pointer text-left underline decoration-emerald-500/60 decoration-[0.08em] underline-offset-[0.15em] hover:text-emerald-700 dark:hover:text-emerald-300"
+                  >
+                    {entry.meal.name}
+                    <BookOpen aria-label="Recipe" className="ml-[0.25em] inline size-[0.8em] -translate-y-px text-emerald-600 dark:text-emerald-400" />
+                  </button>
+                ) : (
+                  entry.meal.name
+                )}
               </>
             )}
           </span>

@@ -1,12 +1,14 @@
 import re
 from datetime import date, timedelta
+from pathlib import Path
 from urllib.parse import urlparse
 
-from flask import Blueprint, abort, current_app, jsonify, request
+from flask import Blueprint, abort, current_app, jsonify, request, send_from_directory
 from sqlalchemy import func
 
 from . import __version__
-from .models import SLOTS, Meal, Person, PlanEntry, PlanSlot, db
+from .models import SLOTS, Meal, Person, PlanEntry, PlanSlot, Recipe, db, utcnow
+from .recipe_import import RecipeImportError, download_image, scrape
 
 api = Blueprint("api", __name__, url_prefix="/api")
 
@@ -273,9 +275,85 @@ def delete_meal(meal_id):
     used = PlanEntry.query.filter_by(meal_id=meal.id).count()
     if used and request.args.get("force") != "true":
         return jsonify(error=f"'{meal.name}' is used in {used} planned meals", usage_count=used), 409
+    image = meal.recipe.image if meal.recipe else None
     db.session.delete(meal)
     db.session.commit()
+    remove_image(image)
     return "", 204
+
+
+# --- recipes ----------------------------------------------------------------
+
+
+def images_dir():
+    return Path(current_app.config["DATA_DIR"]) / "recipe-images"
+
+
+def remove_image(name):
+    if name:
+        (images_dir() / name).unlink(missing_ok=True)
+
+
+def import_recipe(meal):
+    """Fetch the recipe behind meal.recipe_url and store it, replacing an earlier import.
+
+    Raises RecipeImportError with a message for the user.
+    """
+    if not meal.recipe_url:
+        raise RecipeImportError("Add a recipe link first")
+    data = scrape(meal.recipe_url)
+    image_source = data.pop("image_source")
+    image = download_image(image_source, images_dir(), meal.id) if image_source else None
+
+    recipe = meal.recipe or Recipe(meal=meal)
+    old_image = recipe.image
+    for field, value in data.items():
+        setattr(recipe, field, value)
+    recipe.source_url, recipe.image, recipe.imported_at = meal.recipe_url, image, utcnow()
+    db.session.add(recipe)
+    db.session.commit()
+    if old_image != image:
+        remove_image(old_image)
+    return recipe
+
+
+@api.get("/meals/<int:meal_id>/recipe")
+def get_recipe(meal_id):
+    meal = get_or_404(Meal, meal_id)
+    if meal.recipe is None:
+        abort(404, f"'{meal.name}' has no imported recipe")
+    return jsonify(meal.recipe.to_dict())
+
+
+@api.post("/meals/<int:meal_id>/recipe")
+def create_recipe(meal_id):
+    """Import (or re-import) the recipe from the meal's recipe link."""
+    meal = get_or_404(Meal, meal_id)
+    try:
+        recipe = import_recipe(meal)
+    except RecipeImportError as e:
+        db.session.rollback()
+        return jsonify(error=f"Couldn't import the recipe: {e}"), 422
+    return jsonify(recipe.to_dict())
+
+
+@api.delete("/meals/<int:meal_id>/recipe")
+def delete_recipe(meal_id):
+    meal = get_or_404(Meal, meal_id)
+    if meal.recipe:
+        image = meal.recipe.image
+        db.session.delete(meal.recipe)
+        db.session.commit()
+        remove_image(image)
+    return "", 204
+
+
+@api.get("/recipe-images/<path:name>")
+def recipe_image(name):
+    # send_from_directory refuses paths that escape the folder.
+    response = send_from_directory(images_dir(), name, max_age=31536000)
+    response.headers["Cache-Control"] = "private, max-age=31536000, immutable"
+    return response
 
 
 # --- plan -------------------------------------------------------------------

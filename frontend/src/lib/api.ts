@@ -16,8 +16,26 @@ export interface Meal {
   recipe_url: string | null;
   notes: string | null;
   favorite: boolean;
+  /** A recipe was imported from recipe_url and can be shown in the app. */
+  has_recipe: boolean;
   usage_count?: number;
   last_planned?: string | null;
+}
+
+export interface Recipe {
+  meal_id: number;
+  source_url: string;
+  title: string | null;
+  site: string | null;
+  yields: string | null;
+  /** Minutes. */
+  total_time: number | null;
+  prep_time: number | null;
+  cook_time: number | null;
+  ingredient_groups: { purpose: string | null; ingredients: string[] }[];
+  instructions: string[];
+  image_url: string | null;
+  imported_at: string | null;
 }
 
 export interface PlanEntry {
@@ -136,6 +154,9 @@ export const api = {
   createMeal: (data: Partial<Meal>) => request<Meal>("POST", "/meals", data),
   updateMeal: (id: number, data: Partial<Meal>) => request<Meal>("PATCH", `/meals/${id}`, data),
   deleteMeal: (id: number, force = false) => request<void>("DELETE", `/meals/${id}${force ? "?force=true" : ""}`),
+  recipe: (mealId: number) => request<Recipe>("GET", `/meals/${mealId}/recipe`),
+  importRecipe: (mealId: number) => request<Recipe>("POST", `/meals/${mealId}/recipe`, {}),
+  deleteRecipe: (mealId: number) => request<void>("DELETE", `/meals/${mealId}/recipe`),
 
   plan: (start: string, days = 7) => request<PlanEntry[]>("GET", `/plan?start=${start}&days=${days}`),
   assign: (data: AssignInput) => request<PlanEntry[]>("PUT", "/plan", data),

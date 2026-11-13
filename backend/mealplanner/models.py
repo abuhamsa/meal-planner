@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import CheckConstraint, UniqueConstraint
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import CheckConstraint, UniqueConstraint, exists
+from sqlalchemy.orm import DeclarativeBase, column_property
 
 
 class Base(DeclarativeBase):
@@ -62,6 +62,9 @@ class Meal(db.Model):
     entries = db.relationship(
         "PlanEntry", back_populates="meal", cascade="all, delete-orphan", passive_deletes=True
     )
+    recipe = db.relationship(
+        "Recipe", back_populates="meal", uselist=False, cascade="all, delete-orphan", passive_deletes=True
+    )
 
     def to_dict(self, usage_count=None, last_planned=None):
         data = {
@@ -70,11 +73,58 @@ class Meal(db.Model):
             "recipe_url": self.recipe_url,
             "notes": self.notes,
             "favorite": self.favorite,
+            "has_recipe": bool(self.has_recipe),
         }
         if usage_count is not None:
             data["usage_count"] = usage_count
             data["last_planned"] = last_planned.isoformat() if last_planned else None
         return data
+
+
+class Recipe(db.Model):
+    """A recipe imported from a meal's recipe URL. At most one per meal."""
+
+    __tablename__ = "recipe"
+
+    meal_id = db.Column(db.Integer, db.ForeignKey("meal.id", ondelete="CASCADE"), primary_key=True)
+    source_url = db.Column(db.String(500), nullable=False)
+    title = db.Column(db.String(200))
+    site = db.Column(db.String(100))
+    # Free text as the site gives it, e.g. "4 servings".
+    yields = db.Column(db.String(100))
+    # Minutes.
+    total_time = db.Column(db.Integer)
+    prep_time = db.Column(db.Integer)
+    cook_time = db.Column(db.Integer)
+    # [{"purpose": "Für den Teig" | null, "ingredients": ["140 g Salsiz", ...]}, ...]
+    ingredient_groups = db.Column(db.JSON, nullable=False, default=list)
+    # ["Step one...", "Step two..."]
+    instructions = db.Column(db.JSON, nullable=False, default=list)
+    # File name inside DATA_DIR/recipe-images, downloaded at import time.
+    image = db.Column(db.String(100))
+    imported_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+
+    meal = db.relationship("Meal", back_populates="recipe")
+
+    def to_dict(self):
+        return {
+            "meal_id": self.meal_id,
+            "source_url": self.source_url,
+            "title": self.title,
+            "site": self.site,
+            "yields": self.yields,
+            "total_time": self.total_time,
+            "prep_time": self.prep_time,
+            "cook_time": self.cook_time,
+            "ingredient_groups": self.ingredient_groups or [],
+            "instructions": self.instructions or [],
+            "image_url": f"/api/recipe-images/{self.image}" if self.image else None,
+            "imported_at": self.imported_at.isoformat() if self.imported_at else None,
+        }
+
+
+# Lets meal lists say whether a recipe exists without loading it.
+Meal.has_recipe = column_property(exists().where(Recipe.meal_id == Meal.id))
 
 
 class PlanEntry(db.Model):

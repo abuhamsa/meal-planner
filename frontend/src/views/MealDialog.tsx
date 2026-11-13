@@ -1,9 +1,10 @@
-import { Star, Trash2 } from "lucide-react";
+import { BookOpen, Star, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { toast } from "../components/Toaster";
-import { Button, Dialog, Input, Label } from "../components/ui";
+import { Button, Dialog, Input, Label, Spinner } from "../components/ui";
 import { ApiError, type Meal } from "../lib/api";
-import { useDeleteMeal, useSaveMeal } from "../lib/queries";
+import { useDeleteMeal, useDeleteRecipe, useImportRecipe, useSaveMeal } from "../lib/queries";
+import { RecipeDialog } from "./RecipeDialog";
 
 /** `meal` is null when closed, `{}` to create a new meal, or an existing meal to edit. */
 export function MealDialog({ meal, onClose }: { meal: Partial<Meal> | null; onClose: () => void }) {
@@ -19,10 +20,17 @@ function MealForm({ meal, onDone }: { meal: Partial<Meal>; onDone: () => void })
   const [recipeUrl, setRecipeUrl] = useState(meal.recipe_url ?? "");
   const [notes, setNotes] = useState(meal.notes ?? "");
   const [favorite, setFavorite] = useState(meal.favorite ?? false);
+  const [importRecipe, setImportRecipe] = useState(false);
+  const [hasRecipe, setHasRecipe] = useState(meal.has_recipe ?? false);
+  const [viewRecipe, setViewRecipe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const save = useSaveMeal();
   const del = useDeleteMeal();
+  const importer = useImportRecipe();
+  const removeRecipe = useDeleteRecipe();
+  const busy = save.isPending || importer.isPending;
+  const wantsImport = importRecipe && !!recipeUrl.trim();
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -31,8 +39,18 @@ function MealForm({ meal, onDone }: { meal: Partial<Meal>; onDone: () => void })
       { id: meal.id, name, recipe_url: recipeUrl.trim() || null, notes: notes.trim() || null, favorite },
       {
         onSuccess: (saved) => {
-          toast.success(meal.id ? `Saved “${saved.name}”` : `Added “${saved.name}” to your meals`);
-          onDone();
+          const what = meal.id ? `Saved “${saved.name}”` : `Added “${saved.name}” to your meals`;
+          if (!wantsImport) {
+            toast.success(what);
+            onDone();
+            return;
+          }
+          // The meal is saved either way; a failed import only means no recipe to show.
+          importer.mutate(saved.id, {
+            onSuccess: () => toast.success(`${what} with its recipe`),
+            onError: (err) => toast.error(`${what}. ${err.message}`),
+            onSettled: onDone,
+          });
         },
         onError: (err) => setError(err.message),
       },
@@ -77,6 +95,40 @@ function MealForm({ meal, onDone }: { meal: Partial<Meal>; onDone: () => void })
         <Label hint="Optional">Recipe link</Label>
         <Input type="url" maxLength={500} value={recipeUrl} onChange={(e) => setRecipeUrl(e.target.value)} placeholder="https://…" />
       </label>
+      {hasRecipe && meal.id && (
+        <div className="-mt-2 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+          <BookOpen className="size-4 shrink-0" />
+          <span className="min-w-0 flex-1">Recipe saved</span>
+          <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setViewRecipe(true)}>
+            View
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 text-red-600 hover:text-red-700 dark:text-red-400"
+            disabled={removeRecipe.isPending}
+            onClick={() => removeRecipe.mutate(meal.id!, { onSuccess: () => setHasRecipe(false) })}
+          >
+            Remove
+          </Button>
+        </div>
+      )}
+      {recipeUrl.trim() && (
+        <label className="-mt-2 flex cursor-pointer items-start gap-2.5 text-sm">
+          <input
+            type="checkbox"
+            checked={importRecipe}
+            onChange={(e) => setImportRecipe(e.target.checked)}
+            className="mt-0.5 size-4 shrink-0 cursor-pointer accent-brand-600"
+          />
+          <span>
+            {hasRecipe ? "Import the recipe again" : "Import the recipe from this link"}
+            <span className="block text-xs text-stone-500">
+              {hasRecipe ? "Replaces the saved recipe with the current version of the page." : "Saves ingredients, steps and picture so you can open them here."}
+            </span>
+          </span>
+        </label>
+      )}
       <label className="block">
         <Label hint="Optional">Notes</Label>
         <textarea
@@ -123,10 +175,19 @@ function MealForm({ meal, onDone }: { meal: Partial<Meal>; onDone: () => void })
         <Button variant="ghost" onClick={onDone}>
           Cancel
         </Button>
-        <Button type="submit" variant="primary" disabled={save.isPending || !name.trim()}>
-          {meal.id ? "Save" : "Add meal"}
+        <Button type="submit" variant="primary" disabled={busy || !name.trim()}>
+          {importer.isPending ? (
+            <>
+              <Spinner className="size-4" /> Importing recipe…
+            </>
+          ) : meal.id ? (
+            "Save"
+          ) : (
+            "Add meal"
+          )}
         </Button>
       </div>
+      {meal.id && <RecipeDialog meal={viewRecipe ? { id: meal.id, name: meal.name ?? name } : null} onClose={() => setViewRecipe(false)} />}
     </form>
   );
 }

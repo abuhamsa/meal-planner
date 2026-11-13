@@ -64,6 +64,7 @@ export function Dialog({
   subtitle,
   children,
   footer,
+  wide,
 }: {
   open: boolean;
   onClose: () => void;
@@ -71,6 +72,7 @@ export function Dialog({
   subtitle?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
+  wide?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -85,7 +87,10 @@ export function Dialog({
       ref={ref}
       onClose={onClose}
       onClick={(e) => e.target === ref.current && onClose()}
-      className="m-auto max-h-[min(44rem,calc(100dvh-2rem))] w-[min(32rem,calc(100vw-2rem))] overflow-hidden rounded-2xl bg-white p-0 text-stone-900 shadow-2xl ring-1 ring-stone-200 open:animate-pop dark:bg-stone-900 dark:text-stone-100 dark:ring-stone-800"
+      className={clsx(
+        "m-auto overflow-hidden rounded-2xl bg-white p-0 text-stone-900 shadow-2xl ring-1 ring-stone-200 open:animate-pop dark:bg-stone-900 dark:text-stone-100 dark:ring-stone-800",
+        wide ? "max-h-[min(56rem,calc(100dvh-2rem))] w-[min(52rem,calc(100vw-2rem))]" : "max-h-[min(44rem,calc(100dvh-2rem))] w-[min(32rem,calc(100vw-2rem))]",
+      )}
     >
       {open && (
         <div className="flex max-h-[inherit] flex-col">

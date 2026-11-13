@@ -29,16 +29,18 @@ def _sqlite_pragmas(dbapi_connection, _record):
         cursor.close()
 
 
-def _default_database_url():
+def _data_dir():
     data_dir = Path(os.environ.get("DATA_DIR", Path(__file__).resolve().parent.parent / "data"))
     data_dir.mkdir(parents=True, exist_ok=True)
-    return f"sqlite:///{data_dir / 'mealplanner.db'}"
+    return data_dir
 
 
 def create_app(test_config=None):
     app = Flask(__name__)
+    data_dir = _data_dir()
     app.config.update(
-        SQLALCHEMY_DATABASE_URI=os.environ.get("DATABASE_URL") or _default_database_url(),
+        DATA_DIR=str(data_dir),
+        SQLALCHEMY_DATABASE_URI=os.environ.get("DATABASE_URL") or f"sqlite:///{data_dir / 'mealplanner.db'}",
         # "proxy": a reverse proxy (SWAG + Authentik) authenticates every request and
         #          forwards the user in headers; requests without that header are rejected.
         # "none":  no checks, for local development only.
@@ -90,6 +92,36 @@ def create_app(test_config=None):
             click.echo("Created default people.")
         else:
             click.echo("People already exist, nothing to seed.")
+
+    @app.cli.command("import-recipes")
+    @click.option("--redo", is_flag=True, help="Also re-import meals that already have a recipe.")
+    @click.option("--dry-run", is_flag=True, help="Only list the meals that would be imported.")
+    def import_recipes(redo, dry_run):
+        """Import recipes for meals that have a recipe link."""
+        from .api import import_recipe
+        from .models import Meal
+        from .recipe_import import RecipeImportError
+
+        meals = Meal.query.filter(Meal.recipe_url.is_not(None)).order_by(Meal.name_key).all()
+        meals = [m for m in meals if redo or m.recipe is None]
+        click.echo(f"{len(meals)} meals to import.")
+        ok = failed = 0
+        for meal in meals:
+            if dry_run:
+                click.echo(f"  {meal.name}: {meal.recipe_url}")
+                continue
+            try:
+                recipe = import_recipe(meal)
+            except RecipeImportError as e:
+                db.session.rollback()
+                failed += 1
+                click.echo(f"  FAIL {meal.name}: {e}")
+                continue
+            ok += 1
+            count = sum(len(g["ingredients"]) for g in recipe.ingredient_groups)
+            click.echo(f"  ok   {meal.name}: {count} ingredients, {len(recipe.instructions)} steps{', image' if recipe.image else ''}")
+        if not dry_run:
+            click.echo(f"Imported {ok}, failed {failed}.")
 
     if app.config["AUTH_MODE"] == "none":
         app.logger.warning("AUTH_MODE=none: authentication is disabled. Do not use this in production.")

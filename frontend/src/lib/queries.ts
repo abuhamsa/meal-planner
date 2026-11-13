@@ -8,6 +8,7 @@ export const keys = {
   meals: (params: object = {}) => ["meals", params] as const,
   plan: (start: string) => ["plan", start] as const,
   planSlots: (start: string) => ["plan", start, "slots"] as const,
+  recipe: (mealId: number) => ["recipe", mealId] as const,
 };
 
 export const useMe = () => useQuery({ queryKey: keys.me, queryFn: api.me, staleTime: Infinity });
@@ -107,5 +108,32 @@ export function useDeletePerson() {
   return useMutation({
     mutationFn: ({ id, force }: { id: number; force?: boolean }) => api.deletePerson(id, force),
     onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: keys.people }), qc.invalidateQueries({ queryKey: ["plan"] })]),
+  });
+}
+
+export const useRecipe = (mealId: number | undefined) =>
+  useQuery({ queryKey: keys.recipe(mealId ?? 0), queryFn: () => api.recipe(mealId!), enabled: !!mealId });
+
+/** Recipes change `has_recipe` on meals, which plan entries embed too. */
+function useInvalidateRecipe() {
+  const qc = useQueryClient();
+  const invalidate = useInvalidatePlanAndMeals();
+  return (mealId: number) => Promise.all([qc.invalidateQueries({ queryKey: keys.recipe(mealId) }), invalidate()]);
+}
+
+export function useImportRecipe() {
+  const invalidate = useInvalidateRecipe();
+  return useMutation({
+    mutationFn: (mealId: number) => api.importRecipe(mealId),
+    onSuccess: (_, mealId) => invalidate(mealId),
+  });
+}
+
+export function useDeleteRecipe() {
+  const invalidate = useInvalidateRecipe();
+  return useMutation({
+    mutationFn: (mealId: number) => api.deleteRecipe(mealId),
+    onSuccess: (_, mealId) => invalidate(mealId),
+    onError,
   });
 }
