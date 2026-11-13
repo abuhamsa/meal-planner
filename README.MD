@@ -14,6 +14,7 @@ no matter how often you eat it.
 - **Per-person plans:** start with two people and add more any time. People who eat the same
   meal are shown together; anyone can get something different.
 - **Meal details:** recipe link, notes, and favorites, plus how often and when a meal was planned.
+- **Recipes:** import ingredients, steps and picture from a meal's recipe link, or write the recipe yourself.
   The library can be sorted A–Z, by most planned, or by recently planned.
 - **Login through your reverse proxy:** no auth code in the app. SWAG + Authentik decide who gets in.
 - Light and dark mode, works on phones, dates formatted in the browser's language.
@@ -137,6 +138,10 @@ All endpoints are under `/api` and use JSON.
 | `GET /plan?start=YYYY-MM-DD&days=7` | Plan entries in a date range |
 | `PUT /plan` | `{date, slot, person_ids, meal_id \| meal_name}`: assign a meal (`meal_name` reuses or creates) |
 | `DELETE /plan/:id` | Remove one entry |
+| `GET /meals/:id/recipe` | The meal's saved recipe (`404` if none) |
+| `POST /meals/:id/recipe` | Import (or re-import) the recipe from the meal's recipe link; `422` with a message if that fails |
+| `PUT /meals/:id/recipe` | `{yields, total_time, ingredient_groups, instructions}`: write a recipe by hand or edit a saved one (keeps an imported picture and source link) |
+| `DELETE /meals/:id/recipe` | Remove the recipe |
 
 Deleting a person or a meal that's still in the plan returns `409` with `usage_count`. Repeat
 the request with `?force=true` to delete it together with its plan entries.

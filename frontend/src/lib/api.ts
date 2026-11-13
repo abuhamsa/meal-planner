@@ -16,7 +16,7 @@ export interface Meal {
   recipe_url: string | null;
   notes: string | null;
   favorite: boolean;
-  /** A recipe was imported from recipe_url and can be shown in the app. */
+  /** A recipe (imported from recipe_url or written by hand) can be shown in the app. */
   has_recipe: boolean;
   usage_count?: number;
   last_planned?: string | null;
@@ -24,7 +24,8 @@ export interface Meal {
 
 export interface Recipe {
   meal_id: number;
-  source_url: string;
+  /** The page it was imported from; null for recipes written by hand. */
+  source_url: string | null;
   title: string | null;
   site: string | null;
   yields: string | null;
@@ -37,6 +38,9 @@ export interface Recipe {
   image_url: string | null;
   imported_at: string | null;
 }
+
+/** What can be written by hand. Picture and source of an imported recipe are kept. */
+export type RecipeInput = Pick<Recipe, "yields" | "total_time" | "ingredient_groups" | "instructions">;
 
 export interface PlanEntry {
   id: number;
@@ -156,6 +160,7 @@ export const api = {
   deleteMeal: (id: number, force = false) => request<void>("DELETE", `/meals/${id}${force ? "?force=true" : ""}`),
   recipe: (mealId: number) => request<Recipe>("GET", `/meals/${mealId}/recipe`),
   importRecipe: (mealId: number) => request<Recipe>("POST", `/meals/${mealId}/recipe`, {}),
+  saveRecipe: (mealId: number, data: RecipeInput) => request<Recipe>("PUT", `/meals/${mealId}/recipe`, data),
   deleteRecipe: (mealId: number) => request<void>("DELETE", `/meals/${mealId}/recipe`),
 
   plan: (start: string, days = 7) => request<PlanEntry[]>("GET", `/plan?start=${start}&days=${days}`),

@@ -82,12 +82,13 @@ class Meal(db.Model):
 
 
 class Recipe(db.Model):
-    """A recipe imported from a meal's recipe URL. At most one per meal."""
+    """A meal's recipe, imported from its recipe URL or written by hand. At most one per meal."""
 
     __tablename__ = "recipe"
 
     meal_id = db.Column(db.Integer, db.ForeignKey("meal.id", ondelete="CASCADE"), primary_key=True)
-    source_url = db.Column(db.String(500), nullable=False)
+    # The page it was imported from; None for recipes written by hand.
+    source_url = db.Column(db.String(500))
     title = db.Column(db.String(200))
     site = db.Column(db.String(100))
     # Free text as the site gives it, e.g. "4 servings".

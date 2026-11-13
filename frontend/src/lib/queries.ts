@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, type AssignInput, type Meal, type Person, type PlanSlot, type Slot } from "./api";
+import { api, type AssignInput, type Meal, type Person, type PlanSlot, type RecipeInput, type Slot } from "./api";
 import { toast } from "../components/Toaster";
 
 export const keys = {
@@ -126,6 +126,18 @@ export function useImportRecipe() {
   return useMutation({
     mutationFn: (mealId: number) => api.importRecipe(mealId),
     onSuccess: (_, mealId) => invalidate(mealId),
+  });
+}
+
+export function useSaveRecipe() {
+  const qc = useQueryClient();
+  const invalidate = useInvalidateRecipe();
+  return useMutation({
+    mutationFn: ({ mealId, data }: { mealId: number; data: RecipeInput }) => api.saveRecipe(mealId, data),
+    onSuccess: (saved, { mealId }) => {
+      qc.setQueryData(keys.recipe(mealId), saved);
+      return invalidate(mealId);
+    },
   });
 }
 
