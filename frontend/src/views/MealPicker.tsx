@@ -1,11 +1,22 @@
 import clsx from "clsx";
-import { Check, ExternalLink, PartyPopper, Plus, Search, Soup, Star, Store, Trash2, X } from "lucide-react";
-import { useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { Avatar, Button, Dialog, Spinner } from "../components/ui";
+import { BookOpen, Check, ExternalLink, Link2, PartyPopper, Plus, Search, Soup, Star, Store, Trash2, X } from "lucide-react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { toast } from "../components/Toaster";
+import { Avatar, Button, Dialog, Input, Label, Spinner } from "../components/ui";
 import type { Meal, Person, PlanEntry, Slot } from "../lib/api";
 import { formatDate, formatRelativeDay, formatWeekday, fromISO, toISO, weekStart } from "../lib/dates";
 import { mealLabel, seatsFor } from "../lib/plan";
-import { slotMap, useAssign, useMeals, usePlanSlots, usePreviousMeal, useSetGuests, useUnassign } from "../lib/queries";
+import {
+  slotMap,
+  useAssign,
+  useImportRecipe,
+  useMeals,
+  usePlanSlots,
+  usePreviousMeal,
+  useSaveMeal,
+  useSetGuests,
+  useUnassign,
+} from "../lib/queries";
 
 export interface PickerTarget {
   date: string;
@@ -155,6 +166,37 @@ function PickerBody({
     }
   }, [pendingEnter, stale, options]);
 
+  // Creating a meal with a recipe link (and maybe importing the recipe) instead of just a name.
+  const [newMeal, setNewMeal] = useState<string | null>(null);
+  const saveMeal = useSaveMeal();
+  const importer = useImportRecipe();
+  const [newMealError, setNewMealError] = useState<string | null>(null);
+  const createWithLink = (name: string, url: string, doImport: boolean) => {
+    if (!selected.length) return;
+    setNewMealError(null);
+    saveMeal.mutate(
+      { name, recipe_url: url || null },
+      {
+        onError: (err) => setNewMealError(err.message),
+        onSuccess: (meal) =>
+          assign.mutate(
+            { date: target.date, slot: target.slot, person_ids: selected, meal_id: meal.id },
+            {
+              onSuccess: () => {
+                if (!doImport || !url) return onDone();
+                // The meal is planned either way; a failed import only means no recipe to show.
+                importer.mutate(meal.id, {
+                  onSuccess: () => toast.success(`Added “${meal.name}” with its recipe`),
+                  onError: (err) => toast.error(`Added “${meal.name}”. ${err.message}`),
+                  onSettled: onDone,
+                });
+              },
+            },
+          ),
+      },
+    );
+  };
+
   const toggle = (id: number) =>
     setSelected((s) => (s.includes(id) ? (s.length > 1 ? s.filter((x) => x !== id) : s) : [...s, id]));
 
@@ -216,6 +258,20 @@ function PickerBody({
         </div>
       )}
 
+      {newMeal !== null ? (
+        <NewMealForm
+          initialName={newMeal}
+          busy={saveMeal.isPending || assign.isPending}
+          importing={importer.isPending}
+          error={newMealError}
+          onBack={() => {
+            setNewMeal(null);
+            setNewMealError(null);
+          }}
+          onSubmit={createWithLink}
+        />
+      ) : (
+      <>
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
         <input
@@ -321,9 +377,19 @@ function PickerBody({
                 <span className="flex size-8 items-center justify-center rounded-lg bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-200">
                   <Plus className="size-4" />
                 </span>
-                <span className="text-sm">
+                <span className="min-w-0 flex-1 truncate text-sm">
                   Create <span className="font-semibold">“{opt.name}”</span>
                 </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setNewMeal(opt.name);
+                  }}
+                  className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-stone-500 ring-1 ring-stone-200 hover:bg-white hover:text-brand-700 hover:ring-brand-200 dark:ring-stone-700 dark:hover:bg-stone-900 dark:hover:text-brand-300"
+                >
+                  <Link2 className="size-3.5" /> Add link
+                </button>
               </>
             ) : (
               <MealOption meal={opt.meal} current={currentMealIds.has(opt.meal.id)} />
@@ -336,8 +402,10 @@ function PickerBody({
           </li>
         )}
       </ul>
+      </>
+      )}
 
-      {selectedEntries.length > 0 && (
+      {selectedEntries.length > 0 && newMeal === null && (
         <div className="-mx-5 -mb-4 flex items-center justify-between gap-3 border-t border-stone-100 bg-stone-50/60 px-5 py-3 dark:border-stone-800 dark:bg-stone-950/40">
           <span className="truncate text-sm text-stone-500">
             {selectedEntries.length === 1
@@ -374,7 +442,11 @@ function MealOption({ meal, current }: { meal: Meal; current: boolean }) {
         <span className="flex items-center gap-1.5 text-sm font-medium">
           <span className="truncate">{meal.name}</span>
           {meal.favorite && <Star className="size-3.5 shrink-0 fill-amber-400 text-amber-400" />}
-          {meal.recipe_url && <ExternalLink className="size-3.5 shrink-0 text-stone-400" />}
+          {meal.has_recipe ? (
+            <BookOpen className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-label="Recipe saved" />
+          ) : (
+            meal.recipe_url && <ExternalLink className="size-3.5 shrink-0 text-stone-400" />
+          )}
         </span>
         <span className="block text-xs text-stone-500">
           {meal.usage_count
@@ -439,5 +511,71 @@ function Guests({ date, slot }: { date: string; slot: Slot }) {
         <X className="size-4" />
       </button>
     </div>
+  );
+}
+
+function NewMealForm({
+  initialName,
+  busy,
+  importing,
+  error,
+  onBack,
+  onSubmit,
+}: {
+  initialName: string;
+  busy: boolean;
+  importing: boolean;
+  error: string | null;
+  onBack: () => void;
+  onSubmit: (name: string, url: string, doImport: boolean) => void;
+}) {
+  const [name, setName] = useState(initialName);
+  const [url, setUrl] = useState("");
+  const [doImport, setDoImport] = useState(false);
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (name.trim()) onSubmit(name.trim(), url.trim(), doImport);
+  };
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-4">
+      <label className="block">
+        <Label>New meal</Label>
+        <Input required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />
+      </label>
+      <label className="block">
+        <Label hint="Optional">Recipe link</Label>
+        <Input autoFocus type="url" maxLength={500} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" />
+      </label>
+      {url.trim() && (
+        <label className="-mt-2 flex cursor-pointer items-start gap-2.5 text-sm">
+          <input
+            type="checkbox"
+            checked={doImport}
+            onChange={(e) => setDoImport(e.target.checked)}
+            className="mt-0.5 size-4 shrink-0 cursor-pointer accent-brand-600"
+          />
+          <span>
+            Import the recipe from this link
+            <span className="block text-xs text-stone-500">Saves ingredients, steps and picture so you can open them here.</span>
+          </span>
+        </label>
+      )}
+      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">{error}</p>}
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" onClick={onBack} disabled={busy || importing}>
+          Back
+        </Button>
+        <span className="flex-1" />
+        <Button type="submit" variant="primary" disabled={busy || importing || !name.trim()}>
+          {importing ? (
+            <>
+              <Spinner className="size-4" /> Importing recipe…
+            </>
+          ) : (
+            "Add & plan"
+          )}
+        </Button>
+      </div>
+    </form>
   );
 }
