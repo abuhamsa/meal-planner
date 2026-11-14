@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, LayoutGrid, Users, UtensilsCrossed } from "lucide-react";
 import { useEffect, useState } from "react";
+import { ThemePicker } from "./components/ThemePicker";
 import { Toaster } from "./components/Toaster";
 import { Button } from "./components/ui";
 import { addDays, formatWeekRange, toISO, weekNumber, weekStart as getWeekStart } from "./lib/dates";
@@ -77,6 +78,7 @@ export default function App() {
               </a>
             ))}
           </nav>
+          <ThemePicker />
         </div>
 
         {tab === "plan" && (

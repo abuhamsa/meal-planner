@@ -9,6 +9,7 @@
   --color-brand-50: oklch(0.97 0.02 45);
   --color-brand-100: oklch(0.94 0.045 45);
   --color-brand-200: oklch(0.88 0.09 45);
+  --color-brand-300: oklch(0.81 0.125 43);
   --color-brand-400: oklch(0.74 0.16 42);
   --color-brand-500: oklch(0.67 0.19 40);
   --color-brand-600: oklch(0.6 0.19 38);
@@ -30,6 +31,64 @@
       transform: translateY(12px);
     }
   }
+}
+
+/*
+ * Colour themes. Each one overrides the accent ("brand") and the neutral ("stone") palettes, so
+ * existing utility classes pick it up. The selector is a plain attribute so a swatch can preview a
+ * theme by carrying data-theme itself; that is also why the default theme restates its values.
+ */
+[data-theme="terracotta"] {
+  --color-brand-50: oklch(0.97 0.02 45);
+  --color-brand-100: oklch(0.94 0.045 45);
+  --color-brand-200: oklch(0.88 0.09 45);
+  --color-brand-300: oklch(0.81 0.125 43);
+  --color-brand-400: oklch(0.74 0.16 42);
+  --color-brand-500: oklch(0.67 0.19 40);
+  --color-brand-600: oklch(0.6 0.19 38);
+  --color-brand-700: oklch(0.51 0.16 36);
+  --color-brand-900: oklch(0.33 0.09 36);
+  --color-stone-50: oklch(98.5% 0.001 106.423);
+  --color-stone-100: oklch(97% 0.001 106.424);
+  --color-stone-200: oklch(92.3% 0.003 48.717);
+  --color-stone-300: oklch(86.9% 0.005 56.366);
+  --color-stone-400: oklch(70.9% 0.01 56.259);
+  --color-stone-500: oklch(55.3% 0.013 58.071);
+  --color-stone-600: oklch(44.4% 0.011 73.639);
+  --color-stone-700: oklch(37.4% 0.01 67.558);
+  --color-stone-800: oklch(26.8% 0.007 34.298);
+  --color-stone-900: oklch(21.6% 0.006 56.043);
+  --color-stone-950: oklch(14.7% 0.004 49.25);
+}
+
+/* Pastel themes share one recipe: --bh is the accent hue, --nh the hue the neutrals are tinted with. */
+[data-theme="blossom"] { --bh: 355; --nh: 350; }
+[data-theme="lavender"] { --bh: 295; --nh: 300; }
+[data-theme="mint"] { --bh: 165; --nh: 165; }
+[data-theme="sky"] { --bh: 240; --nh: 235; }
+[data-theme="peach"] { --bh: 50; --nh: 60; }
+
+:is([data-theme="blossom"], [data-theme="lavender"], [data-theme="mint"], [data-theme="sky"], [data-theme="peach"]) {
+  --color-brand-50: oklch(0.975 0.02 var(--bh));
+  --color-brand-100: oklch(0.945 0.04 var(--bh));
+  --color-brand-200: oklch(0.9 0.065 var(--bh));
+  --color-brand-300: oklch(0.84 0.085 var(--bh));
+  --color-brand-400: oklch(0.76 0.105 var(--bh));
+  --color-brand-500: oklch(0.68 0.115 var(--bh));
+  --color-brand-600: oklch(0.6 0.115 var(--bh));
+  --color-brand-700: oklch(0.52 0.105 var(--bh));
+  --color-brand-900: oklch(0.34 0.07 var(--bh));
+  --color-stone-50: oklch(0.982 0.012 var(--nh));
+  --color-stone-100: oklch(0.962 0.02 var(--nh));
+  --color-stone-200: oklch(0.918 0.026 var(--nh));
+  --color-stone-300: oklch(0.865 0.028 var(--nh));
+  --color-stone-400: oklch(0.71 0.028 var(--nh));
+  --color-stone-500: oklch(0.555 0.028 var(--nh));
+  --color-stone-600: oklch(0.445 0.024 var(--nh));
+  --color-stone-700: oklch(0.375 0.02 var(--nh));
+  --color-stone-800: oklch(0.27 0.017 var(--nh));
+  --color-stone-900: oklch(0.215 0.014 var(--nh));
+  --color-stone-950: oklch(0.15 0.011 var(--nh));
 }
 
 @layer base {
