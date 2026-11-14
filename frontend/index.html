@@ -7,6 +7,14 @@
     <meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0c0a09" media="(prefers-color-scheme: dark)" />
     <title>Meal Planner</title>
+    <script>
+      // Apply the saved colour theme before the first paint (see src/lib/theme.ts).
+      try {
+        document.documentElement.dataset.theme = localStorage.getItem("theme") || "terracotta";
+      } catch {
+        document.documentElement.dataset.theme = "terracotta";
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
