@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { BookOpen, ExternalLink, Moon, PartyPopper, Plus, Store, Sun } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar, Spinner } from "../components/ui";
 import type { Meal, Person, PlanEntry, PlanSlot, Slot } from "../lib/api";
 import { SLOTS } from "../lib/api";
@@ -33,7 +33,21 @@ export function PlanView({ weekStart }: { weekStart: Date }) {
     return map;
   }, [entries]);
 
-  if (loadingPeople || loadingPlan) {
+  // When the current week opens, scroll today's card up to just below the sticky header.
+  const loading = loadingPeople || loadingPlan;
+  const todayRef = useRef<HTMLElement>(null);
+  const scrolledOnce = useRef(false);
+  useEffect(() => {
+    const el = todayRef.current;
+    if (loading || !el) return;
+    const header = document.querySelector("header");
+    const top = el.getBoundingClientRect().top + window.scrollY - (header?.offsetHeight ?? 0) - 12;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: Math.max(0, top), behavior: scrolledOnce.current && !reduceMotion ? "smooth" : "instant" });
+    scrolledOnce.current = true;
+  }, [loading, start]);
+
+  if (loading) {
     return (
       <div className="flex justify-center py-24 text-stone-400">
         <Spinner />
@@ -53,6 +67,7 @@ export function PlanView({ weekStart }: { weekStart: Date }) {
           return (
             <section
               key={iso}
+              ref={iso === today ? todayRef : undefined}
               className={clsx(
                 "grid gap-x-4 gap-y-2 rounded-2xl bg-white p-3 shadow-sm ring-1 sm:grid-cols-[5.5rem_1fr_1fr] sm:p-4 dark:bg-stone-900",
                 isToday(day) ? "ring-2 ring-brand-500/70" : "ring-stone-200/80 dark:ring-stone-800",
