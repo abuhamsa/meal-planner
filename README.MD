@@ -72,19 +72,19 @@ reloads the page, so you land on the Authentik login.
 
 ### Prebuilt images
 
-GitHub Actions ([`.github/workflows/docker.yml`](.github/workflows/docker.yml)) runs the tests
-and builds both images (linux/amd64) on every push and pull request. Pushes to `main` and
-version tags publish them to Docker Hub (`abuhamsa/meal-planner-backend`, `-frontend`) and
-GitHub (`ghcr.io/abuhamsa/meal-planner-*`):
+GitHub Actions ([`.github/workflows/build-deploy.yml`](.github/workflows/build-deploy.yml)) runs
+the tests and builds both images (linux/amd64) on every push and pull request. Pushes to `main`
+and version tags publish them to GitHub (`ghcr.io/abuhamsa/meal-planner-backend`, `-frontend`):
 
-| Tag              | Updated by                         |
-| ---------------- | ---------------------------------- |
-| `latest`, `main` | every push to `main`               |
-| `2`, `2.0`, `2.0.0` | tag `v2.0.0` (compose uses `2`) |
-| `sha-<commit>`   | every push, for rollbacks          |
+| Tag                   | Updated by                                          |
+| --------------------- | --------------------------------------------------- |
+| `2.2.1`, `2.2`, `2`   | every push to `main` (next patch release, compose uses `2`) |
+| `2.3.0`, `2.3`, `2`   | tag `v2.3.0` (for minor/major bumps)                |
+| `sha-<commit>`        | every push, for rollbacks                           |
 
-To release: `git tag v2.2.0 && git push origin v2.2.0`. The tag is also the version shown in the
-app (People page footer); builds from `main` show `main-<commit>`, a local checkout shows `dev`.
+Every push to `main` is released as the next patch version and gets the matching git tag
+(`v2.2.0` -> `v2.2.1`). For a minor/major release: `git tag v2.3.0 && git push origin v2.3.0`.
+The version is shown in the app (People page footer); a local checkout shows `dev`.
 
 Database migrations run automatically when the backend container starts. The database is
 stored in `./data/mealplanner.db`; back up that folder.
