@@ -6,6 +6,9 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { WeekOverview } from "./views/WeekOverview";
 import { ApiError } from "./lib/api";
+import { updateFavicon } from "./lib/favicon";
+
+updateFavicon();
 
 const queryClient = new QueryClient({
   defaultOptions: {
