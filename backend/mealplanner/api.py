@@ -8,6 +8,7 @@ from sqlalchemy import func
 
 from . import __version__
 from .models import SLOTS, Meal, Person, PlanEntry, PlanSlot, Recipe, db, utcnow
+from .next_meal import next_meal
 from .recipe_import import RecipeImportError, download_image, scrape
 
 api = Blueprint("api", __name__, url_prefix="/api")
@@ -106,6 +107,12 @@ def get_or_404(model, obj_id):
 @api.get("/me")
 def me():
     return jsonify(user=current_user(), version=__version__)
+
+
+@api.get("/next-meal")
+def get_next_meal():
+    """The next lunch or dinner as one spoken German sentence: {text, date, slot}. For Siri."""
+    return jsonify(next_meal())
 
 
 # --- people -----------------------------------------------------------------

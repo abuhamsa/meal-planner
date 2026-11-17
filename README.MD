@@ -125,6 +125,7 @@ After changing models: `flask db migrate -m "describe change"` and commit the ne
 | `AUTH_USER_HEADER` | `X-authentik-username` | Header that carries the logged-in user |
 | `DATA_DIR`         | `backend/data`         | Folder for `mealplanner.db` (`/app/data` in Docker) |
 | `DATABASE_URL`     | –                      | Overrides the SQLite location completely |
+| `TIMEZONE`         | `Europe/Zurich`        | Local time for `/api/next-meal` |
 
 ## API
 
@@ -137,6 +138,7 @@ All endpoints are under `/api` and use JSON.
 | `GET /meals?q=&sort=name\|frequent\|recent&limit=` | Search the library, with `usage_count` and `last_planned` |
 | `POST /meals` · `GET/PATCH /meals/:id` · `DELETE /meals/:id[?force=true]` | Manage meals |
 | `GET /plan?start=YYYY-MM-DD&days=7` | Plan entries in a date range |
+| `GET /next-meal` | The next lunch or dinner as one German sentence, `{text, date, slot}` (see [Siri](#siri-was-essen-wir-als-nächstes)) |
 | `PUT /plan` | `{date, slot, person_ids, meal_id \| meal_name}`: assign a meal (`meal_name` reuses or creates) |
 | `DELETE /plan/:id` | Remove one entry |
 | `GET /meals/:id/recipe` | The meal's saved recipe (`404` if none) |
@@ -146,6 +148,41 @@ All endpoints are under `/api` and use JSON.
 
 Deleting a person or a meal that's still in the plan returns `409` with `usage_count`. Repeat
 the request with `?force=true` to delete it together with its plan entries.
+
+## Siri: "Was essen wir als Nächstes?"
+
+`GET /api/next-meal` answers with a sentence ready to be spoken, always in German:
+
+```json
+{"text": "Heute Abend gibt es Pizza für Anna und Salat für Ben. Es kommen Gäste: Müllers.", "date": "2026-11-17", "slot": "dinner"}
+```
+
+"Next" means today's lunch until 13:00, today's dinner until 21:00, and after that tomorrow's
+lunch (in `TIMEZONE`). Kids eat what the person they follow eats, and eating out, leftovers
+and guests are mentioned too. If nothing is planned, the answer is "Heute Abend ist noch nichts geplant."
+
+An Apple Shortcut can't log in through Authentik in a browser, so it uses **Authentik header
+authentication** instead: it sends an app password as HTTP Basic auth, and Authentik lets the
+request through and sets the usual `X-authentik-*` headers. The app itself doesn't change.
+
+1. **Authentik:** on the meal planner's Proxy Provider, under *Authentication settings*, turn on
+   **Intercept header authentication**. Do this for both outposts' providers if you want it on
+   both domains.
+2. **App password:** as the user the Shortcut should act as, go to *Settings → Tokens and App
+   passwords* and create an **App password** with no expiry (or a long one).
+3. **Test it:** `curl -u <username> https://eat.abuhamsa.ch/api/next-meal` (enter the app
+   password at the prompt) should return the JSON above. An HTML page or a redirect means
+   the `Authorization` header doesn't reach the outpost.
+4. **Shortcut on the iPhone:** make a new Shortcut with these actions:
+   - **Get Contents of URL**: `https://eat.abuhamsa.ch/api/next-meal`, method GET, header
+     `Authorization` = `Basic <base64 of username:app-password>`
+     (`printf '%s' 'user:password' | base64`)
+   - **Get Dictionary Value**: `text` from *Contents of URL*
+   - **Speak Text**: *Dictionary Value*, with **Language: German** set in the action's options.
+     This keeps the pronunciation German even if Siri itself is set to English.
+
+   Name the Shortcut in Siri's language on that phone, e.g. "Was essen wir als Nächstes" or
+   "What are we eating next". Saying "Hey Siri, <name>" runs it.
 
 ## License
 

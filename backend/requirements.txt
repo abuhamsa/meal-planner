@@ -5,3 +5,5 @@ gunicorn==23.0.0
 recipe-scrapers==15.13.0
 requests==2.34.2
 Pillow==13.0.0
+# Time zone data for zoneinfo; the slim image has none.
+tzdata==2025.2

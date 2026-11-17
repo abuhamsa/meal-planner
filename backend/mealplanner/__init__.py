@@ -49,6 +49,8 @@ def create_app(test_config=None):
         AUTH_MODE=os.environ.get("AUTH_MODE", "proxy").lower(),
         AUTH_USER_HEADER=os.environ.get("AUTH_USER_HEADER", "X-authentik-username"),
         DEV_USER=os.environ.get("DEV_USER", "dev"),
+        # Decides what "next meal" means (lunch until 13:00, dinner until 21:00).
+        TIMEZONE=os.environ.get("TIMEZONE", "Europe/Zurich"),
         JSON_SORT_KEYS=False,
     )
     if test_config:
