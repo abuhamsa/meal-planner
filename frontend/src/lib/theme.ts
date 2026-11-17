@@ -12,6 +12,8 @@ export const THEMES = [
 
 export type ThemeId = (typeof THEMES)[number]["id"];
 
+import { updateFavicon } from "./favicon";
+
 const KEY = "theme";
 const DEFAULT: ThemeId = "terracotta";
 
@@ -24,6 +26,7 @@ export function getTheme(): ThemeId {
 
 export function setTheme(id: ThemeId) {
   document.documentElement.dataset.theme = id;
+  updateFavicon();
   try {
     localStorage.setItem(KEY, id);
   } catch {
