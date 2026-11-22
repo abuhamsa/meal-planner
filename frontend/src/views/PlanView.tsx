@@ -33,15 +33,19 @@ export function PlanView({ weekStart }: { weekStart: Date }) {
     return map;
   }, [entries]);
 
-  // When the current week opens, scroll today's card up to just below the sticky header.
+  // When the current week opens, scroll today's card up to just below the sticky header;
+  // any other week starts at the top instead of keeping the previous week's scroll position.
   const loading = loadingPeople || loadingPlan;
   const todayRef = useRef<HTMLElement>(null);
   const scrolledOnce = useRef(false);
   useEffect(() => {
+    if (loading) return;
     const el = todayRef.current;
-    if (loading || !el) return;
-    const header = document.querySelector("header");
-    const top = el.getBoundingClientRect().top + window.scrollY - (header?.offsetHeight ?? 0) - 12;
+    let top = 0;
+    if (el) {
+      const header = document.querySelector("header");
+      top = el.getBoundingClientRect().top + window.scrollY - (header?.offsetHeight ?? 0) - 12;
+    }
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     window.scrollTo({ top: Math.max(0, top), behavior: scrolledOnce.current && !reduceMotion ? "smooth" : "instant" });
     scrolledOnce.current = true;
